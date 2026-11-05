@@ -5,7 +5,7 @@ using ModelContextProtocol.Protocol;
 
 namespace Api.RAG.Tests.Fixtures;
 
-internal sealed record McpConsumerRequest(Uri Endpoint, string? ToolName, Dictionary<string, object?>? Arguments);
+internal sealed record McpConsumerRequest(Uri Endpoint, string? ToolName, Dictionary<string, object?>? Arguments, string? BearerToken = null);
 internal sealed record McpConsumerResult(int ProcessId, string[] Tools, CallToolResult? Result);
 
 internal static class McpConsumerProcess
@@ -85,7 +85,11 @@ internal static class McpConsumerProcess
             {
                 Endpoint = request.Endpoint,
                 TransportMode = HttpTransportMode.StreamableHttp,
-                ConnectionTimeout = TimeSpan.FromSeconds(5)
+                ConnectionTimeout = TimeSpan.FromSeconds(5),
+                AdditionalHeaders = request.BearerToken is null ? null : new Dictionary<string, string>
+                {
+                    ["Authorization"] = $"Bearer {request.BearerToken}"
+                }
             });
             await using var client = await McpClient.CreateAsync(transport, cancellationToken: deadline.Token);
             var tools = await client.ListToolsAsync(cancellationToken: deadline.Token);

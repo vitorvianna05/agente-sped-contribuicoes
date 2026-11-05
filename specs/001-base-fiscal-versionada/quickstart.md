@@ -6,6 +6,14 @@ Contratos: [REST administrativo](contracts/admin-rest.md), [MCP](contracts/mcp.m
 [schemas](contracts/mcp-tools.schema.json). Regras e estados: [modelo](data-model.md).
 Gates e rastreabilidade: [plano](plan.md). Não usar uma fixture sintética como documento fiscal oficial.
 
+## Fundação disponível — Phase 2
+
+T007–T018 implementadas; 41 testes passaram no aceite sintético após revisão. Autenticação JWT e
+autorização, migrações segregadas, idempotência, consumo e auditoria estão disponíveis.
+MCP anuncia lista vazia de tools até as histórias respectivas. Configuração e comando real
+de migração estão em [validation/phase-2.md](validation/phase-2.md); o template Example é
+deliberadamente incompleto e não inicia o host sem entradas obrigatórias.
+
 ## Pré-requisitos
 
 - SDK estável .NET 10 selecionado pelo global.json; PowerShell; HTTPS de desenvolvimento.
@@ -37,7 +45,7 @@ segredos em variáveis de ambiente ou secret manager. Grupos de configuração p
 | Retention | Categorias, prazos, versão da política e retenção de cada classe persistida. |
 | Evaluation | Manifesto aprovado, critérios prévios e diretório de relatórios sem segredos. |
 
-Exemplos criados na T006: src/Api.RAG/appsettings.Example.json e tests/Api.RAG.Tests/Fixtures/synthetic-settings.json. Registro em validation/gates.md; validação de configuração será implementada na T008.
+Exemplos criados na T006: src/Api.RAG/appsettings.Example.json e tests/Api.RAG.Tests/Fixtures/synthetic-settings.json. Registro em validation/gates.md; validação de configuração implementada na T008; Resource, AllowedHosts e atribuições centrais devem ser fornecidos externamente.
 Configuração ausente de retenção deve impedir expurgo; ausência de perfil adotado impede consulta
 operacional, sem falsificar resultado vazio. Ambiente sintético usa provider/relógio controlados.
 
@@ -63,7 +71,7 @@ Após migrações explícitas pela identidade própria e configuração, iniciar
 dotnet run --project src/Api.RAG/Api.RAG.csproj --no-build
 ```
 
-As tarefas devem documentar o comando real de migração escolhido antes de executar integração.
+Comando explícito de migração implementado na T013: dotnet run --project src/Api.RAG/Api.RAG.csproj --no-build --no-launch-profile -- --migrate, com as duas conexões externas. Integração sintética automatizada usa FoundationDatabase.
 Este guia não inventa script de migração ou compose disponível. Integração deverá subir o
 servidor e usar cliente MCP real; mocks não comprovam compatibilidade de transporte.
 

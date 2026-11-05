@@ -16,6 +16,12 @@ sincronizadas. Em 2026-10-30 foi iniciado somente o scaffold da Phase 1 das task
 T001–T003 criaram solução, convenções e documentação. Em 2026-11-05, T004 e T006 foram concluídas com restore/build e teste local aprovados; T005 também concluída em 2026-11-05: host, dublês, consumidor MCP separado e PostgreSQL/PgVector descartável validados; seis testes passaram. Não há comportamento de negócio implementado. Ver
 [evidências da implementação](validation/phase-1.md).
 
+**Execução Phase 2 (2026-11-05)**: T007–T018 implementadas. Contratos comuns, autenticação
+JWT Bearer, autorização central explícita, migrações segregadas, idempotência, consumo por
+tentativa e auditoria validados em ambiente sintético. Aceite final: 41 testes aprovados após revisão;
+ver [phase-2.md](validation/phase-2.md) e [ADR-0003](adrs/0003-fundacao-operacional.md).
+Isso não aprova P01–P04 nem implementa as histórias a partir da Phase 3.
+
 ## Summary
 
 Disponibilizar na Api.RAG uma base oficial compartilhada de manuais e guias PDF com texto
@@ -117,7 +123,7 @@ não são considerados aprovados ou executados pela conclusão das Fases 0 e 1.
 | 11. Contratos | SDK MCP atual pesquisado; versionar contrato da aplicação separadamente do protocolo. | Conforme no desenho em contracts/. |
 | 12. SDD | Spec e dez respostas preservadas; pendências explícitas e decisões técnicas em ADR. | Conforme no desenho; gates P01–P04 rastreados. |
 | 13. DDD | Contexto Conhecimento Fiscal, glossário da spec, invariantes explícitas e domínio independente; modelo tático em data-model.md. | Conforme no desenho; invariantes e fronteiras documentadas. |
-| 14. Clean Code | Casos de uso localizáveis, regras coesas sem duplicação nos transportes, falhas explícitas e verificações automatizadas de organização. | Diretriz incorporada; implementação e análise estática ainda não existem. |
+| 14. Clean Code | Casos de uso localizáveis, regras coesas sem duplicação nos transportes, falhas explícitas e verificações automatizadas de organização. | Fundação implementada com analisadores e testes; demais histórias pendentes. |
 | 15. Arquitetura ágil | Incrementos por história/risco, ADR revisável e estruturas adicionais justificadas. | Conforme na proposta; evidências por incremento exigidas. |
 
 ### Condições de ativação e aceite

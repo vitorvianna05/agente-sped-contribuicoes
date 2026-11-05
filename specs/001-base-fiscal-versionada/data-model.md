@@ -101,7 +101,7 @@ Operação: `operationId`, `type`, `documentVersionId?`, `generationId?`, `princ
 `correlationId`, `state`, `createdAt`, `startedAt?`, `finishedAt?`, `leaseUntil?`,
 `leaseOwner?`, `attemptNumber`, `resultCode?`, `idempotencyKeyDigest`, `requestDigest`.
 
-Chave de idempotência por principal e tipo de operação; reutilização com payload diferente
+Término não pode anteceder criação, inclusive quando startedAt é nulo; domínio e banco validam essa cronologia. Chave de idempotência por principal e tipo de operação; reutilização com payload diferente
 é conflito. Constraint no banco protege repetição concorrente. Fila/lease persistidos permitem
 retomada; worker não depende de fila exclusivamente em memória. Efeitos são idempotentes,
 mas chamada ambígua ao provedor pode gerar nova tentativa faturável, sempre registrada.
@@ -109,7 +109,7 @@ mas chamada ambígua ao provedor pode gerar nova tentativa faturável, sempre re
 Consumo por tentativa: `attemptId`, `operationId`, `correlationId`, `service`, `provider`,
 `model`, `startedAt`, `finishedAt?`, `status`, `inputTokens?`, `outputTokens?`,
 `embeddingTokens?`, `usageAvailability`, `estimatedCost?`, `providerReportedCost?`,
-`currency?`, `priceReference?`, `priceVersion?`. Custos em decimal, desconhecidos nulos.
+`currency?` (moeda informada pelo provedor), `estimatedCurrency?` (moeda da tabela da estimativa), `priceReference?`, `priceVersion?`. Custos em decimal, desconhecidos nulos. Moedas são independentes: a tabela não preenche moeda omitida pelo provedor e não há conversão presumida.
 Não persistir prompts ou PDF completo no evento. Intenção e desfecho são estados separados;
 interrupção entre rede e banco deixa desfecho desconhecido explícito. Retry oculto de SDK
 não pode omitir tentativas. Auditoria operacional fica na Api.RAG.
@@ -177,4 +177,4 @@ consistente ou indisponibilidade, nunca conteúdo parcial ou de outra versão.
 
 FR-001–021 e QR-001–003 são verificados pelos cenários de quickstart.md; SC-009/010 exigem
 protocolo com corpus de 300 PDFs e 5 consultas concorrentes. P01–P04 não estão satisfeitos por
-este modelo. Não há migração, SQL executado, schema fiscal inventado ou código de aplicação.
+este modelo. A Phase 2 implementa Operacao, consumo, auditoria e cinco migrações de fundação, validadas no PostgreSQL isolado (validation/phase-2.md). Demais agregados permanecem desenho; nenhum schema fiscal foi inventado.

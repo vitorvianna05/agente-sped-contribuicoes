@@ -340,3 +340,12 @@ runner e carregamento/registro Pgvector/Npgsql. Isso não valida conexão Postgr
 extensão vector instalada, extração PDF, embeddings reais ou transporte MCP.
 Esses ensaios permanecem nas tarefas próprias, começando pela infraestrutura T005.
 Não foi adicionado Semantic Kernel ou LLM gerador. Evidências em validation/phase-1.md.
+## R17 — Fundação Phase 2 (2026-11-05)
+
+Adicionado Microsoft.AspNetCore.Authentication.JwtBearer 10.0.14, alinhado ao ASP.NET Core
+10/Mvc.Testing já fixados. Restore real e locked mode aprovados; lockfiles atualizados.
+JWT validado com chave/metadata efêmeras nos testes; emissor real continua dependência P04.
+Decisões de claims, transações, migrações e consumo estão no ADR-0003. As APIs usadas foram
+conferidas na documentação oficial ASP.NET Core/Npgsql e nos XMLs do SDK MCP 2.3.0 restaurado.
+O transporte stateless requer handler explícito para anunciar tools/list vazio, e usa POST.
+Não houve mudança da versão MCP, adoção de perfil de embeddings, preços reais ou LLM gerador.

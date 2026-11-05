@@ -29,7 +29,7 @@ public sealed class InfrastructureFixtureTests
         await Assert.ThrowsAsync<InvalidOperationException>(() => outbound.GetAsync(
             new Uri("https://provider.synthetic.invalid"), TestContext.Current.CancellationToken));
         using var response = await client.GetAsync("/mcp", TestContext.Current.CancellationToken);
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
     }
 
     /// <summary>O provider fake é determinístico e respeita cancelamento sem chamar a rede.</summary>
