@@ -65,6 +65,8 @@ internal static class MigrationRunner
         await using var grants = new NpgsqlCommand($"""
             GRANT USAGE ON SCHEMA rag TO {role};
             GRANT SELECT, INSERT, UPDATE, DELETE ON rag.operations, rag.consumption_attempts, rag.audit_entries TO {role};
+            GRANT SELECT, INSERT, UPDATE, DELETE ON rag.processing_profiles, rag.sources, rag.document_versions,
+                rag.applicabilities, rag.generations, rag.chunks TO {role};
             """, connection, transaction);
         await grants.ExecuteNonQueryAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
