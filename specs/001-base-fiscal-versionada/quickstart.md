@@ -79,7 +79,7 @@ servidor e usar cliente MCP real; mocks não comprovam compatibilidade de transp
 
 | Cenário | Ações pelo cliente administrativo/MCP | Resultado |
 | --- | --- | --- |
-| Ingestão e publicação | POST ingestão; acompanhar; buscar antes de approve; approve pelo mesmo administrador; buscar novamente. | 202/operação concluída não publica; antes da aprovação nenhum trecho ativo; após, referências resolvíveis e fonte correta. |
+| Ingestão e publicação | POST /api/v1/ingest; acompanhar; buscar antes de approve; approve pelo mesmo administrador; buscar novamente. | 202/operação concluída não publica; antes da aprovação nenhum trecho ativo; após, referências resolvíveis e fonte correta. |
 | Formatos | Enviar schema, imagem/PDF sem texto ou conteúdo inválido. | Recusa suportada pelo contrato ou operação failed, sem evidência ativa; localização ausente não é inventada. |
 | Deduplicação | Repetir upload e executar dois uploads simultâneos com mesma identidade/versão/bytes. | Uma representação ativa, identidade preservada, nenhuma redundância causada por retry. |
 | Conflito | Enviar bytes diferentes sob mesma identidade/versão. | 409 VERSION_CONTENT_CONFLICT; origem e publicação anteriores intactas; só outra versão oficial permite atualização. |
@@ -140,3 +140,42 @@ Se busca exata/bytea não atenderem, medir alternativa e revisar ADR antes de mu
 Entregar relatório com comandos realmente executados, ambiente, passou/falhou/ignorado,
 TRX quando gerado, links a requisitos/SC e P01–P04 ainda abertos. Não declarar aceitação
 produtiva com corpus não aprovado, políticas ausentes ou teste obrigatório não executado.
+## Desenho alvo aprovado em 2026-11-05
+
+A documentação passou a seguir a estrutura funcional da Api.Conhecimento/Api.Atendimento:
+Controllers, Ingestao, Rag, Tools e cliente ConhecimentoMcpClient na futura Api.Agente.
+Ver docs/architecture.md e specs/002-validacao-sped-parecer/. Trata-se de desenho, não código
+migrado. Ingestão planejada: POST /api/v1/ingest, arquivo + metadata. MCP: BuscarConhecimento
+com consulta/tipoDocumento/versaoLayout e ResolverReferencia com referenceId. O consumidor
+lê JSON validado de structuredContent/TextContentBlock e usa OpenAI para interpretar os
+resultados determinísticos e produzir parecer com evidências. Esse parecer não integra o
+SLA de recuperação da RAG. Nenhum teste de interoperabilidade do desenho novo foi executado.
+
+## Incremento executável: ingestão textual (ajustes 1–4)
+
+O POST `/api/v1/ingest` e os GET `/admin/v1/operations/{id}` e
+`/admin/v1/document-versions/{id}` estão implementados. Enviar um PDF em `arquivo`,
+JSON `metadata` conforme contracts/admin-rest.md, Bearer token central com
+`knowledge.ingest` e cabeçalho `Idempotency-Key`. Leitura exige `knowledge.audit`.
+A resposta 202 fornece Location e operation.operationId; consultar até preparationState
+ser ready ou state ser failed. Ready retorna EMBEDDINGS_PENDING: ainda não é ingestão
+integral concluída, publicação ou evidência disponível por MCP.
+
+Antes do host, configurar conexão da aplicação, identidade distinta de migração, JWT,
+hosts/origens HTTPS, limites, retenção aprovada e perfil completo versionado. Executar
+`dotnet run --project src/Api.RAG -- --migrate` com configuração externa para aplicar
+as seis migrações. O comando tem efeito no banco configurado: este incremento foi
+validado somente em PostgreSQL descartável, sem executar migração de ambiente real.
+Perfil de extração requer UUID e versões suportadas documentadas no contrato. Parâmetros
+candidatos de exemplo estão em tests/Api.RAG.Tests/Fixtures/synthetic-settings.json;
+provider Fake é restrito a Testing e não é configuração de operação real.
+
+Teste reproduzível sem OpenAI: comandos e resultado (60 testes) em
+[validation/ingestion-adjustments.md](validation/ingestion-adjustments.md).
+Aprovação, embeddings e tools funcionais continuam pendentes; ver ADR 0005.
+
+Revisão dos ajustes 1–4: configurar também `Processing.MaxPreparationAttempts` como inteiro
+positivo externo. Todos os perfis configurados devem estar completos e ter UUIDs únicos
+por valor; configuração inválida impede a inicialização. Reingestões retornam a identidade
+e os horários completos da operação original. Falhas técnicas e esgotamento de retomadas
+ficam explícitos no acompanhamento. Evidência: [ingestion-review.md](validation/ingestion-review.md).
