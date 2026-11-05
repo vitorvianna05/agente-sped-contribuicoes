@@ -1,0 +1,21 @@
+CREATE TABLE rag.consumption_attempts (
+    attempt_id uuid PRIMARY KEY,
+    operation_id uuid NOT NULL REFERENCES rag.operations(operation_id),
+    correlation_id text NOT NULL,
+    service text NOT NULL CHECK (service = 'Api.RAG'),
+    provider text NOT NULL,
+    model text NOT NULL,
+    started_at timestamptz NOT NULL,
+    finished_at timestamptz NULL,
+    status text NOT NULL CHECK (status IN ('pending','succeeded','failed','cancelled','timeout')),
+    input_tokens bigint NULL CHECK (input_tokens >= 0),
+    output_tokens bigint NULL CHECK (output_tokens >= 0),
+    embedding_tokens bigint NULL CHECK (embedding_tokens >= 0),
+    usage_availability text NOT NULL CHECK (usage_availability IN ('unknown','available','unavailable')),
+    estimated_cost numeric NULL CHECK (estimated_cost >= 0),
+    provider_reported_cost numeric NULL CHECK (provider_reported_cost >= 0),
+    currency text NULL,
+    price_reference text NULL,
+    price_version text NULL,
+    CHECK (finished_at IS NULL OR finished_at >= started_at)
+);
