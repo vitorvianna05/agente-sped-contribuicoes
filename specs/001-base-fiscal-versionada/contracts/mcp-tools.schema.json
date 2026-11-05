@@ -1,0 +1,438 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:agentespedcontrib:knowledge:mcp:schemas:1.0",
+  "title": "Contratos de aplicação MCP — conhecimento fiscal v1",
+  "description": "Catálogo: ao anunciar tools, resolver referências locais e publicar schemas completos. Regras adicionais em mcp.md.",
+  "x-tools": [
+    {
+      "name": "fiscal_knowledge_search_v1",
+      "inputSchema": {
+        "$ref": "#/$defs/SearchInput"
+      },
+      "outputSchema": {
+        "$ref": "#/$defs/Result"
+      }
+    },
+    {
+      "name": "fiscal_reference_resolve_v1",
+      "inputSchema": {
+        "$ref": "#/$defs/ResolveInput"
+      },
+      "outputSchema": {
+        "$ref": "#/$defs/Result"
+      }
+    }
+  ],
+  "$defs": {
+    "SearchInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "query": {
+          "type": "string",
+          "minLength": 1
+        },
+        "documentType": {
+          "type": "string",
+          "minLength": 1
+        },
+        "layoutVersion": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "query",
+        "documentType",
+        "layoutVersion"
+      ]
+    },
+    "ResolveInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "referenceId": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "required": [
+        "referenceId"
+      ]
+    },
+    "Location": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "availability": {
+          "enum": [
+            "available",
+            "unavailable"
+          ]
+        },
+        "physicalPages": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "uniqueItems": true
+        },
+        "printedLabels": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "section": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "availability",
+        "physicalPages",
+        "printedLabels",
+        "section",
+        "reason"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "availability": {
+                "const": "unavailable"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "physicalPages": {
+                "maxItems": 0
+              },
+              "printedLabels": {
+                "maxItems": 0
+              },
+              "section": {
+                "type": "null"
+              },
+              "reason": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "availability": {
+                "const": "available"
+              }
+            }
+          },
+          "then": {
+            "anyOf": [
+              {
+                "properties": {
+                  "physicalPages": {
+                    "minItems": 1
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "printedLabels": {
+                    "minItems": 1
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "section": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            ],
+            "properties": {
+              "reason": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "Applicability": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "documentType": {
+          "type": "string",
+          "minLength": 1
+        },
+        "layoutVersion": {
+          "type": "string",
+          "minLength": 1
+        },
+        "officialBasis": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "documentType",
+        "layoutVersion",
+        "officialBasis"
+      ]
+    },
+    "Evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "referenceId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "sourceId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "documentVersionId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "generationId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "chunkId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "issuer": {
+          "type": "string",
+          "minLength": 1
+        },
+        "officialIdentifier": {
+          "type": "string",
+          "minLength": 1
+        },
+        "officialVersion": {
+          "type": "string",
+          "minLength": 1
+        },
+        "originUri": {
+          "type": "string",
+          "format": "uri"
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "applicability": {
+          "$ref": "#/$defs/Applicability"
+        },
+        "location": {
+          "$ref": "#/$defs/Location"
+        },
+        "referenceState": {
+          "enum": [
+            "active",
+            "superseded",
+            "withdrawn"
+          ]
+        },
+        "score": {
+          "type": [
+            "number",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "referenceId",
+        "sourceId",
+        "documentVersionId",
+        "generationId",
+        "chunkId",
+        "issuer",
+        "officialIdentifier",
+        "officialVersion",
+        "originUri",
+        "text",
+        "applicability",
+        "location",
+        "referenceState",
+        "score"
+      ]
+    },
+    "Limitation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "code",
+        "message"
+      ]
+    },
+    "ExecutionError": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1
+        },
+        "retryable": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "code",
+        "message",
+        "retryable"
+      ]
+    },
+    "Result": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contractVersion": {
+          "const": "1.0"
+        },
+        "correlationId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "enum": [
+            "evidence_found",
+            "insufficient_evidence",
+            "invalid_context",
+            "reference_unavailable",
+            "technical_failure"
+          ]
+        },
+        "evidences": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Evidence"
+          }
+        },
+        "limitations": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/Limitation"
+          }
+        },
+        "error": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/ExecutionError"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "contractVersion",
+        "correlationId",
+        "status",
+        "evidences",
+        "limitations",
+        "error"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "technical_failure"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "error": {
+                "$ref": "#/$defs/ExecutionError"
+              },
+              "evidences": {
+                "maxItems": 0
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "error": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "evidence_found"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "evidences": {
+                "minItems": 1
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "enum": [
+                  "invalid_context",
+                  "reference_unavailable"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "evidences": {
+                "maxItems": 0
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}
