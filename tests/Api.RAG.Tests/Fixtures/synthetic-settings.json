@@ -8,8 +8,27 @@
     "Authority": "https://identity.synthetic.invalid",
     "Audience": "api-rag-synthetic",
     "RequireHttpsMetadata": true,
-    "AllowedOrigins": ["https://consumer.synthetic.invalid"],
-    "CentralPermissionAssignments": []
+    "AllowedOrigins": [
+      "https://consumer.synthetic.invalid"
+    ],
+    "CentralPermissionAssignments": [
+      {
+        "PrincipalId": "central-admin",
+        "Permissions": [
+          "knowledge.ingest",
+          "knowledge.publish",
+          "knowledge.reprocess",
+          "knowledge.withdraw",
+          "knowledge.expurge",
+          "knowledge.audit"
+        ]
+      }
+    ],
+    "Resource": "https://api-rag.synthetic.invalid/mcp",
+    "AllowedHosts": [
+      "localhost",
+      "127.0.0.1"
+    ]
   },
   "Processing": {
     "MaxFileBytes": 1048576,
@@ -17,19 +36,21 @@
     "MaxConcurrentJobs": 1,
     "TimeoutSeconds": 30,
     "LeaseSeconds": 60,
-    "Profiles": [{
-      "Id": "synthetic-candidate-v1",
-      "AdoptionState": "candidate",
-      "Segmenter": "token-window",
-      "ChunkTokens": 128,
-      "OverlapTokens": 16,
-      "EmbeddingProvider": "Fake",
-      "EmbeddingModel": "synthetic-vector-v1",
-      "Dimensions": 3,
-      "Metric": "cosine",
-      "TopK": 3,
-      "Threshold": 0.5
-    }]
+    "Profiles": [
+      {
+        "Id": "synthetic-candidate-v1",
+        "AdoptionState": "candidate",
+        "Segmenter": "token-window",
+        "ChunkTokens": 128,
+        "OverlapTokens": 16,
+        "EmbeddingProvider": "Fake",
+        "EmbeddingModel": "synthetic-vector-v1",
+        "Dimensions": 3,
+        "Metric": "cosine",
+        "TopK": 3,
+        "Threshold": 0.5
+      }
+    ]
   },
   "Retrieval": {
     "AdoptedProfileId": null,
@@ -65,5 +86,7 @@
     "CriteriaPath": null,
     "ReportsDirectory": null
   },
-  "TestClock": {"UtcNow": "2026-01-01T00:00:00Z"}
+  "TestClock": {
+    "UtcNow": "2026-01-01T00:00:00Z"
+  }
 }
