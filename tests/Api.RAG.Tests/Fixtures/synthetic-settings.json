@@ -1,0 +1,69 @@
+{
+  "ConfigurationPurpose": "SyntheticTestsOnly_NotApprovedForProduction",
+  "ConnectionStrings": {
+    "Rag": null,
+    "RagMigration": null
+  },
+  "Authentication": {
+    "Authority": "https://identity.synthetic.invalid",
+    "Audience": "api-rag-synthetic",
+    "RequireHttpsMetadata": true,
+    "AllowedOrigins": ["https://consumer.synthetic.invalid"],
+    "CentralPermissionAssignments": []
+  },
+  "Processing": {
+    "MaxFileBytes": 1048576,
+    "MaxPages": 10,
+    "MaxConcurrentJobs": 1,
+    "TimeoutSeconds": 30,
+    "LeaseSeconds": 60,
+    "Profiles": [{
+      "Id": "synthetic-candidate-v1",
+      "AdoptionState": "candidate",
+      "Segmenter": "token-window",
+      "ChunkTokens": 128,
+      "OverlapTokens": 16,
+      "EmbeddingProvider": "Fake",
+      "EmbeddingModel": "synthetic-vector-v1",
+      "Dimensions": 3,
+      "Metric": "cosine",
+      "TopK": 3,
+      "Threshold": 0.5
+    }]
+  },
+  "Retrieval": {
+    "AdoptedProfileId": null,
+    "MaxQueryCharacters": 1000,
+    "TimeoutSeconds": 5
+  },
+  "Embeddings": {
+    "Provider": "Fake",
+    "Model": "synthetic-vector-v1",
+    "Dimensions": 3,
+    "TimeoutSeconds": 2,
+    "MaxAttempts": 2,
+    "RetryDelayMilliseconds": 10,
+    "SdkAutomaticRetriesEnabled": false
+  },
+  "Retention": {
+    "PolicyVersion": "synthetic-only-v1",
+    "ApprovalReference": null,
+    "WithdrawnSourceDays": 2,
+    "SupersededGenerationDays": 2,
+    "OriginalDays": 3,
+    "ReferenceDays": 3,
+    "TombstoneDays": 4,
+    "AuditDays": 5,
+    "QueryDays": 5,
+    "ConsumptionDays": 5,
+    "AutomaticExpurgeEnabled": false
+  },
+  "Evaluation": {
+    "OfficialExecutionEnabled": false,
+    "ManifestPath": null,
+    "FiscalApprovalReference": null,
+    "CriteriaPath": null,
+    "ReportsDirectory": null
+  },
+  "TestClock": {"UtcNow": "2026-01-01T00:00:00Z"}
+}
