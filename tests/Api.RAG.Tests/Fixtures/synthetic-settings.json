@@ -36,11 +36,16 @@
     "MaxConcurrentJobs": 1,
     "TimeoutSeconds": 30,
     "LeaseSeconds": 60,
+    "MaxPreparationAttempts": 3,
     "Profiles": [
       {
-        "Id": "synthetic-candidate-v1",
+        "Id": "10000000-0000-0000-0000-000000000001",
         "AdoptionState": "candidate",
         "Segmenter": "token-window",
+        "ExtractorVersion": "pdfpig-0.1.16-reading-order-v1",
+        "NormalizationVersion": "line-endings-v1",
+        "QueryNormalizationVersion": "line-endings-v1",
+        "TokenizerVersion": "whitespace-v1",
         "ChunkTokens": 128,
         "OverlapTokens": 16,
         "EmbeddingProvider": "Fake",

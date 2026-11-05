@@ -10,7 +10,7 @@ internal sealed class RagOptionsValidator(bool allowSynthetic = false) : IValida
         var errors = new List<string>();
         if (options.Processing.MaxFileBytes is not > 0 || options.Processing.MaxPages is not > 0 ||
             options.Processing.MaxConcurrentJobs is not > 0 || options.Processing.TimeoutSeconds is not > 0 ||
-            options.Processing.LeaseSeconds is not > 0 || options.Retrieval.MaxQueryCharacters is not > 0 ||
+            options.Processing.LeaseSeconds is not > 0 || options.Processing.MaxPreparationAttempts is not > 0 || options.Retrieval.MaxQueryCharacters is not > 0 ||
             options.Retrieval.TimeoutSeconds is not > 0 || options.Embeddings.TimeoutSeconds is not > 0 ||
             options.Embeddings.MaxAttempts is not > 0 || options.Embeddings.RetryDelayMilliseconds is not >= 0)
         {
@@ -39,7 +39,7 @@ internal sealed class RagOptionsValidator(bool allowSynthetic = false) : IValida
             errors.Add("Provider Fake é exclusivo dos testes sintéticos.");
         }
 
-        if (options.Processing.Profiles.Select(profile => profile.Id).Distinct(StringComparer.Ordinal).Count() != options.Processing.Profiles.Length)
+        if (options.Processing.Profiles.Select(profile => Guid.TryParse(profile.Id, out var id) ? id : Guid.Empty).Distinct().Count() != options.Processing.Profiles.Length)
         {
             errors.Add("Identificadores de perfis devem ser únicos.");
         }
@@ -52,6 +52,22 @@ internal sealed class RagOptionsValidator(bool allowSynthetic = false) : IValida
             {
                 errors.Add("Perfil de processamento inválido.");
             }
+            if (profile.EmbeddingProvider == "Fake" && (!allowSynthetic || options.ConfigurationPurpose != "SyntheticTestsOnly_NotApprovedForProduction"))
+            {
+                errors.Add("Perfil Fake é exclusivo dos testes sintéticos.");
+            }
+            try
+            {
+                profile.ToDomain().Validate();
+            }
+            catch (KnowledgeException)
+            {
+                errors.Add("Perfil de extração/segmentação inválido ou incompleto.");
+            }
+        }
+        if (options.Processing.LeaseSeconds <= options.Processing.TimeoutSeconds)
+        {
+            errors.Add("Lease deve exceder o timeout para permitir finalização protegida.");
         }
 
         var retention = options.Retention;
@@ -95,7 +111,8 @@ internal sealed class RagOptionsValidator(bool allowSynthetic = false) : IValida
 
     public static void RequireOperationalProfile(RagOptions options)
     {
-        var profile = options.Processing.Profiles.SingleOrDefault(profile => profile.Id == options.Retrieval.AdoptedProfileId);
+        var profile = Guid.TryParse(options.Retrieval.AdoptedProfileId, out var adoptedId)
+            ? options.Processing.Profiles.SingleOrDefault(profile => Guid.TryParse(profile.Id, out var id) && id == adoptedId) : null;
         if (profile is null || profile.AdoptionState != "adopted" ||
             profile.EmbeddingProvider != options.Embeddings.Provider || profile.EmbeddingModel != options.Embeddings.Model ||
             profile.Dimensions != options.Embeddings.Dimensions)

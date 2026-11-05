@@ -1,3 +1,5 @@
+using Api.RAG.Domain.Knowledge;
+
 namespace Api.RAG.Infrastructure.Configuration;
 
 internal sealed class RagOptions
@@ -41,6 +43,7 @@ internal sealed class ProcessingOptions
     public int? MaxConcurrentJobs { get; set; }
     public int? TimeoutSeconds { get; set; }
     public int? LeaseSeconds { get; set; }
+    public int? MaxPreparationAttempts { get; set; }
     public ProcessingProfile[] Profiles { get; set; } = [];
 }
 
@@ -52,6 +55,21 @@ internal sealed class ProcessingProfile
     public string EmbeddingModel { get; set; } = "";
     public int Dimensions { get; set; }
     public string Metric { get; set; } = "";
+    public string? ExtractorVersion { get; set; }
+    public string? NormalizationVersion { get; set; }
+    public string? Segmenter { get; set; }
+    public string? TokenizerVersion { get; set; }
+    public int? ChunkTokens { get; set; }
+    public int? OverlapTokens { get; set; }
+    public string? QueryNormalizationVersion { get; set; }
+    public int? TopK { get; set; }
+    public double? Threshold { get; set; }
+    public Guid? EvaluationId { get; set; }
+
+    public PerfilProcessamento ToDomain() => new(Guid.TryParse(Id, out var id) ? id : Guid.Empty,
+        ExtractorVersion ?? "", NormalizationVersion ?? "", Segmenter ?? "", ChunkTokens ?? 0, OverlapTokens ?? -1,
+        TokenizerVersion ?? "", EmbeddingProvider, EmbeddingModel, Dimensions, Metric,
+        QueryNormalizationVersion ?? "", TopK, Threshold, EvaluationId, AdoptionState);
 }
 
 internal sealed class RetrievalOptions
