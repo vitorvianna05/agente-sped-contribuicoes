@@ -1,6 +1,6 @@
 # Contrato REST administrativo v1
 
-Api.RAG, HTTPS, prefixo `/admin/v1`. Uso administrativo exclusivo; consumidores funcionais
+Api.RAG, HTTPS, ingestão em `/api/v1/ingest` e demais operações sob `/admin/v1`. Uso administrativo exclusivo; consumidores funcionais
 não consultam conhecimento por REST. Os estados e invariantes estão em [data-model.md](../data-model.md).
 Nomes/campos são contratos da aplicação, não layouts ou schemas fiscais.
 
@@ -24,11 +24,20 @@ Respostas têm `contractVersion`, `correlationId` gerado/validado pelo sistema, 
 `Location` aponta à operação em caso de 202, não prova publicação. 202/200/201 obedecem à
 existência ou criação do recurso, conforme cada operação abaixo.
 
+## Revisão estrutural — 2026-11-05
+
+IngestController segue o padrão da Api.Conhecimento de referência, com multipart arquivo +
+metadata JSON fiscal. A rota planejada anterior /admin/v1/ingestions passa a /api/v1/ingest.
+POST /api/v1/ingest e os dois GET de acompanhamento estão implementados no incremento textual.
+As demais operações de T033, incluindo approve, continuam pendentes. Demais caminhos da tabela são
+relativos a /admin/v1. Mantêm-se 202/acompanhamento, aprovação, JWT e idempotência; não
+copiar o campo usuario livre ou a substituição destrutiva da referência.
+
 ## Operações
 
 | Método e caminho | Permissão central | Entrada | Sucesso |
 | --- | --- | --- | --- |
-| POST `/ingestions` | `knowledge.ingest` | multipart: `file` PDF e `metadata` JSON descrito abaixo; Idempotency-Key | 202 com operationId e acompanhamento; replay pode retornar 200 para resultado já concluído, sem novo processamento. |
+| POST `/api/v1/ingest` | `knowledge.ingest` | multipart: `arquivo` PDF e `metadata` JSON descrito abaixo; Idempotency-Key | 202 com operationId e acompanhamento; replay pode retornar 200 para resultado já concluído, sem novo processamento. |
 | GET `/operations/{operationId}` | `knowledge.audit` | ID válido; acesso administrativo central | 200 com tipo, estado, documentVersionId/generationId quando conhecidos, timestamps, código de falha e ETag; 404 se não existe. |
 | GET `/document-versions/{documentVersionId}` | `knowledge.audit` | ID válido | 200 com metadados, publicação, geração ativa e ETag; não retorna busca ou texto funcional. |
 | POST `/document-versions/{id}/approve` | `knowledge.publish` | JSON `{contractVersion, generationId}`; If-Match e Idempotency-Key | 200 com estado published, revisão e aprovação; somente geração concluída inicial unpublished, inclusive pelo próprio autor da ingestão. |
@@ -63,6 +72,38 @@ Hash é dos bytes recebidos; mesmo source+versão e hash diferente retorna confl
 revisão interna. Mesmo conteúdo reingerido preserva identidade/proveniência, sem duplicata ativa.
 
 ## Acompanhamento e publicação
+
+### Incremento textual implementado — ajustes 1–4
+
+POST retorna `{contractVersion,correlationId,operation,location}`. Os dois GET retornam
+`{contractVersion,correlationId,operation}` e `{contractVersion,correlationId,document}`.
+ETag forte é enviado também no cabeçalho e em revision. IDs técnicos são UUIDs.
+operation contém operationId/type/state/documentVersionId/generationId/createdAt/startedAt/
+finishedAt/resultCode/preparationState/revision; document contém documentVersionId/metadata/
+originalContentHash/publicationState/activeGenerationId/revision/createdAt. Nenhum GET retorna PDF,
+texto, spans ou vetor. Ambos exigem knowledge.audit central, mesmo para o autor do upload.
+
+preparationState: queued, processing, ready, failed. Extração roda em background após a aceitação.
+Texto pronto ainda deixa operação queued, resultCode EMBEDDINGS_PENDING e finishedAt null;
+a geração completa aguarda embeddings e a versão permanece unpublished. Erro de PDF fica em
+failed com código PDF_TEXT_UNAVAILABLE ou PDF_PAGE_LIMIT, sem trechos parciais persistidos.
+Replay de operação terminal retorna 200; outra chave para o mesmo conteúdo/perfil retorna
+a operação canônica completa (IDs, timestamps e ETag), sem criar outra geração. A chave
+adicional é registrada internamente, mas não cria uma cronologia híbrida na resposta.
+Mudança de origem/metadados existentes gera 409 SOURCE_METADATA_CONFLICT.
+Falha técnica do worker registra failed/TECHNICAL_FAILURE, distinta de PDF_TEXT_UNAVAILABLE.
+Tentativas interrompidas ou sem confirmação têm limite externo Processing.MaxPreparationAttempts;
+ao esgotar o limite, failed/PROCESSING_ATTEMPTS_EXHAUSTED é persistido junto à auditoria.
+Parâmetros e limitação de cancelamento do parser: ADR 0005.
+
+Perfis aceitos neste incremento exigem UUID, ExtractorVersion
+`pdfpig-0.1.16-reading-order-v1`, NormalizationVersion/QueryNormalizationVersion
+`line-endings-v1`, TokenizerVersion `whitespace-v1`, Segmenter `structural` ou `token-window`,
+ChunkTokens positivo e 0 <= OverlapTokens < ChunkTokens; todos externos. Modelo, provider,
+dimensões e métrica também ficam no snapshot imutável. Não há parâmetros produtivos aprovados.
+Campos inesperados, repetidos, ausentes ou null em metadata são recusados. Metadados têm
+até 64 KiB; origem até 4000 caracteres, demais strings até 1000 e até 100 aplicabilidades.
+Upload admite um arquivo e um campo metadata; nome do arquivo não define versão ou destino.
 
 Estados de processamento: queued, processing, succeeded, failed, cancelled.
 Publicação: unpublished, published, withdrawn, purged; retornada separadamente.

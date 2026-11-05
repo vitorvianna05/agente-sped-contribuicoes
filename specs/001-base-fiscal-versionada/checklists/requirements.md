@@ -32,10 +32,10 @@
 ## Notes
 
 - Revisão atualizada em 2026-11-05: 16 itens de qualidade e 3 de alinhamento constitucional registrados. Este checklist documental não comprova implementação funcional.
-- FR-001–021 possuem cenários de aceite; SC-001–010 cobrem invariantes, avaliação e capacidade. SC-009/010 definem 300 PDFs, 5 consultas simultâneas e ≥95% completas em até 5 segundos, ainda sem ensaio oficial executado.
+- FR-001–022 possuem cobertura planejada em cenários/tarefas; SC-001–010 cobrem invariantes, avaliação e capacidade. SC-009/010 definem 300 PDFs, 5 consultas simultâneas e ≥95% completas em até 5 segundos, ainda sem ensaio oficial executado.
 - Duas rodadas de esclarecimentos foram incorporadas. D07 e D12 estão parcialmente resolvidas na spec; decisões técnicas D04/D11 estão documentadas no plano, pesquisa e ADR-0001. Parâmetros finais de recuperação continuam dependentes de avaliação.
 - Pendências de ativação/aceite são rastreadas por P01–P04 em plan.md e validation/gates.md: políticas e prazos aprovados, corpus/expectativas e responsáveis fiscais, caracterização e ensaio de capacidade, configuração e segurança reais.
-- T001–T006 entregam somente setup e infraestrutura de testes. Autenticação, domínio, ingestão, recuperação fiscal e avaliações oficiais continuam nas tarefas posteriores.
+- T001–T018 implementaram setup/fundação e foram validadas historicamente. O incremento textual implementa a rota de ingestão e o acompanhamento; embeddings, aprovação e tools funcionais continuam pendentes. Api.Agente com parecer generativo está planejada na feature 002.
 - DDD, Clean Code e arquitetura ágil são restrições constitucionais; arquitetura e vocabulário estão em docs/architecture/conhecimento-fiscal.md. Sua verificação evolui por incremento, sem considerar o desenho como prova de implementação.
 - Não há modelo, dimensão, chunk, topK ou limiar de produção aprovado por uso de valores sintéticos em testes.
 
@@ -44,3 +44,5 @@
 - [x] DDD registrado com contexto, vocabulário, invariantes e exigência de modelagem verificável (QR-001).
 - [x] Clean Code registrado com critérios de organização, responsabilidades, dependências e revisão (QR-002).
 - [x] Arquitetura ágil registrada com incrementos rastreáveis, decisões revisáveis e complexidade justificada (QR-003).
+
+- Referência e contratos revisados: docs/architecture.md, docs/requirements.md e ADR-0004. Marcadores documentais não são aceite de implementação do desenho novo.

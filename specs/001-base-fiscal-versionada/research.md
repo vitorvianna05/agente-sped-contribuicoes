@@ -154,6 +154,8 @@ SSE legado/stateful não tem necessidade demonstrada. Não haverá fallback para
 
 ## R09 — Tools e falhas
 
+**Nota de revisão 2026-11-05:** os nomes planejados abaixo foram substituídos por BuscarConhecimento/ResolverReferencia em contracts/mcp.md e R18; demais garantias permanecem. O trecho a seguir registra a decisão histórica anterior.
+
 **Decisão proposta:** duas tools de leitura: `fiscal_knowledge_search_v1` e
 `fiscal_reference_resolve_v1`. A busca recebe pergunta, tipo documental e versão do layout;
 a resolução recebe identificador de referência. Identidade vem do transporte autenticado,
@@ -349,3 +351,13 @@ Decisões de claims, transações, migrações e consumo estão no ADR-0003. As 
 conferidas na documentação oficial ASP.NET Core/Npgsql e nos XMLs do SDK MCP 2.3.0 restaurado.
 O transporte stateless requer handler explícito para anunciar tools/list vazio, e usa POST.
 Não houve mudança da versão MCP, adoção de perfil de embeddings, preços reais ou LLM gerador.
+## R18 — Referência Api.Conhecimento/Api.Atendimento (2026-11-05)
+
+Código local da solução CorporativoAI inspecionado, sem execução ou edição externa.
+Ver docs/reference-api-conhecimento.md. Adotar PDF → chunks → embeddings OpenAI → PgVector,
+consulta → embedding → similaridade → BuscarConhecimento → ConhecimentoMcpClient. Não copiar
+substituição destrutiva de chunks, usuário do corpo, resposta fiscal somente em texto livre,
+SDK MCP 2.2.0 no lugar do 2.3.0 já restaurado ou índice HNSW presumido por comentário.
+Usuário confirmou IA generativa para interpretar resultados de validação e elaborar parecer
+com evidências na Api.Agente (feature 002), após validadores e MCP. Não foram aprovados modelos,
+dimensões, topK, limiares ou regras fiscais novos. Nenhum código foi alterado nesta revisão.

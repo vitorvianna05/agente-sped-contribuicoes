@@ -24,8 +24,8 @@ correspondentes; o arquivo é catálogo de schemas, não formato de mensagem JSO
 
 | Tool | Responsabilidade | Entrada | Saída |
 | --- | --- | --- | --- |
-| `fiscal_knowledge_search_v1` | Recuperar trechos de fontes publicadas, aplicabilidade oficial e geração/perfil elegíveis. | SearchInput: query, documentType, layoutVersion. | Result com evidências, referências e limitações. |
-| `fiscal_reference_resolve_v1` | Recuperar exatamente o trecho citado, inclusive histórico retido autorizado. | ResolveInput: referenceId. | Result com evidência exata e estado active/superseded/withdrawn, ou indisponibilidade tipada. |
+| `BuscarConhecimento` | Recuperar trechos de fontes publicadas, aplicabilidade oficial e geração/perfil elegíveis. | SearchInput: consulta, tipoDocumento, versaoLayout. | Result com evidências, referências e limitações. |
+| `ResolverReferencia` | Recuperar exatamente o trecho citado, inclusive histórico retido autorizado. | ResolveInput: referenceId. | Result com evidência exata e estado active/superseded/withdrawn, ou indisponibilidade tipada. |
 
 Não aceitar topK, limiar, perfil arbitrário, identidade, bypass de versão ou URL de download
 em argumentos. O servidor usa perfil adotado após P02; perfil ausente é falha de configuração,
@@ -55,7 +55,7 @@ Sem falha técnica, `error` é null. Ausência de evidência é resultado normal
 invalid_context também é resultado de domínio normal para contexto incompleto; cliente valida
 status. Erros JSON-RPC (método/versão/forma inválida) ficam no envelope do protocolo e não em
 um Result de sucesso. Transportes podem negar 401/403/429 antes da execução. O resultado
-structuredContent deve obedecer ao schema e pode ter cópia textual JSON para compatibilidade.
+structuredContent deve obedecer ao schema e deve ter cópia textual JSON equivalente para clientes no padrão ConhecimentoMcpClient que leem TextContentBlock.
 
 ## Invariantes semânticas além do schema
 
@@ -89,3 +89,24 @@ sem resposta, versão incompatível, localização indisponível, falha externa,
 cancelamento e concorrência. Medir pelo cliente todas as consultas da amostra de SC-009/010,
 incluindo embedding e resposta completa, no perfil de 300 PDFs e 5 consultas simultâneas.
 ≥95% devem concluir em até 5s; falhas/timeouts não são sucessos e não saem do relatório.
+## Revisão de integração — 2026-11-05
+
+Adota o padrão de classes Tools da Api.Conhecimento e cliente Mcp da Api.Atendimento
+inspecionados em CorporativoAI: HttpClientTransport → McpClient.CreateAsync → ListToolsAsync →
+CallToolAsync. Os nomes antigos fiscal_knowledge_search_v1/fiscal_reference_resolve_v1 eram
+planejados, não implementados/publicados; são substituídos por BuscarConhecimento/ResolverReferencia.
+Result continua contractVersion 1.0. A fundação implementada anuncia lista vazia e não foi
+alterada por esta revisão documental; T041/T042 implementarão e validarão o contrato novo.
+
+A assinatura fiscal estende a referência: consulta + tipoDocumento + versaoLayout obrigatórios.
+O cliente da referência, que envia apenas consulta e espera texto livre, precisa ser adaptado.
+O consumidor valida structuredContent ou a cópia JSON textual, confronta os dois se ambos
+existirem e rejeita divergência. Conteúdo TextContentBlock não é aceito como evidência se não
+obedecer ao schema e às invariantes. A futura Api.Agente usa esses trechos para o parecer
+OpenAI após as validações determinísticas; geração não ocorre nesta tool ou na Api.RAG.
+
+Exemplo de arguments (placeholders técnicos, não versão oficial aprovada):
+
+```json
+{"consulta":"Fundamento para a inconsistência encontrada","tipoDocumento":"<tipo-identificado>","versaoLayout":"<versao-identificada>"}
+```

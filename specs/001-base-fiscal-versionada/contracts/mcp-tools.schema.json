@@ -5,7 +5,7 @@
   "description": "Catálogo: ao anunciar tools, resolver referências locais e publicar schemas completos. Regras adicionais em mcp.md.",
   "x-tools": [
     {
-      "name": "fiscal_knowledge_search_v1",
+      "name": "BuscarConhecimento",
       "inputSchema": {
         "$ref": "#/$defs/SearchInput"
       },
@@ -14,7 +14,7 @@
       }
     },
     {
-      "name": "fiscal_reference_resolve_v1",
+      "name": "ResolverReferencia",
       "inputSchema": {
         "$ref": "#/$defs/ResolveInput"
       },
@@ -28,23 +28,23 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "query": {
+        "consulta": {
           "type": "string",
           "minLength": 1
         },
-        "documentType": {
+        "tipoDocumento": {
           "type": "string",
           "minLength": 1
         },
-        "layoutVersion": {
+        "versaoLayout": {
           "type": "string",
           "minLength": 1
         }
       },
       "required": [
-        "query",
-        "documentType",
-        "layoutVersion"
+        "consulta",
+        "tipoDocumento",
+        "versaoLayout"
       ]
     },
     "ResolveInput": {

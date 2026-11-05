@@ -16,6 +16,15 @@ conhecimento por tipo documental e versão compatível, com referências recuper
 explícitas. Controle administrativo e de ciclo de vida. Comunicação funcional exclusivamente
 pelo protocolo constitucional. Pendências: D04, D07, D12 e D11."
 
+## Revisão de escopo integrado — 2026-11-05
+
+Arquitetura alvo alinhada à Api.Conhecimento/Api.Atendimento da solução CorporativoAI
+indicada pelo usuário. Esta feature fornece embeddings dos manuais/consultas, recuperação
+semântica e servidor MCP. A Api.Agente consumirá as evidências para interpretar os resultados
+determinísticos e elaborar parecer com IA generativa, planejada na feature 002.
+O objetivo continua validar arquivos SPED Contribuições. Similaridade não aprova layouts,
+referências históricas não são descartadas e o LLM não substitui validadores obrigatórios.
+A revisão altera documentação/contratos planejados, sem modificar o código da fundação.
 ## Clarifications
 
 ### Session 2026-10-29
@@ -35,6 +44,11 @@ pelo protocolo constitucional. Pendências: D04, D07, D12 e D11."
 - Q: Qual tempo máximo de resposta deve orientar o aceite das consultas nesse perfil de carga? → A: Recuperação completa em até 5 segundos em pelo menos 95% das consultas, com 300 PDFs e 5 consultas simultâneas, excluída a geração de parecer por LLM (opção B).
 
 - Q: Como tratar conteúdo diferente recebido com a mesma identificação e versão oficial de um documento? → A: Rejeitar o conflito; aceitar atualização de conteúdo somente com outra versão oficial, preservando o conteúdo existente (opção A).
+
+### Session 2026-11-05
+
+- Q: Qual função de IA além dos embeddings? → A: Interpretar os resultados das validações e elaborar o parecer com evidências, na Api.Agente consumidora MCP (feature 002).
+- Diretriz: seguir o padrão funcional Api.Conhecimento/Api.Atendimento, preservando contexto fiscal, rastreabilidade e validações determinísticas.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -315,6 +329,10 @@ com respostas esperadas, versões incompatíveis e perguntas sem resposta.
   resultados e justificativa da escolha. Tamanho de trecho, quantidade recuperada e limiar
   NÃO DEVEM ser fixados sem essa evidência.
 
+- **FR-022**: A ingestão DEVE gerar embeddings dos trechos por um provedor de IA configurado;
+  a recuperação DEVE gerar o embedding da consulta em espaço compatível e ordenar candidatos
+  por similaridade, após aplicar a elegibilidade fiscal. Fixtures fake não comprovam a integração
+  real nem aprovam parâmetros. Avaliação continua regida por FR-020–021.
 ### Restrições de qualidade e organização herdadas
 
 - **QR-001 — DDD**: A feature DEVE seguir DDD no contexto de Conhecimento Fiscal, com

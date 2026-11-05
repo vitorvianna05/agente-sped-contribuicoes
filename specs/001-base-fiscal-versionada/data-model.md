@@ -175,6 +175,17 @@ consistente ou indisponibilidade, nunca conteúdo parcial ou de outra versão.
 
 ## Verificação e gates
 
-FR-001–021 e QR-001–003 são verificados pelos cenários de quickstart.md; SC-009/010 exigem
+Incremento textual dos ajustes 1–4: FonteOficial, VersaoDocumental, Aplicabilidade,
+GeracaoProcessamento, PerfilProcessamento, Trecho e Localizacao possuem implementação,
+com persistência em 0006_documents.sql. Referencia é o UUID global imutável vinculado ao
+trecho na mesma linha; resolução MCP/tombstone continuam futuros. Perfis são snapshots JSON
+imutáveis por UUID/hash; aplicabilidades são filhos relacionais com ator/data do transporte.
+Originais incluem a versão da política de retenção. preparationState e preparationManifestHash
+registram o estágio textual separado da geração integral; ver ADR 0005.
+
+FR-001–022 e QR-001–003 são verificados pelos cenários de quickstart.md; SC-009/010 exigem
 protocolo com corpus de 300 PDFs e 5 consultas concorrentes. P01–P04 não estão satisfeitos por
-este modelo. A Phase 2 implementa Operacao, consumo, auditoria e cinco migrações de fundação, validadas no PostgreSQL isolado (validation/phase-2.md). Demais agregados permanecem desenho; nenhum schema fiscal foi inventado.
+este modelo. A Phase 2 implementa Operacao, consumo, auditoria e cinco migrações de fundação,
+validadas no PostgreSQL isolado (validation/phase-2.md). O incremento textual adiciona a sexta
+migração e os modelos citados acima. Catálogo, avaliação, retenção operacional/expurgo e
+publicação continuam incrementos futuros; nenhum schema fiscal foi inventado.

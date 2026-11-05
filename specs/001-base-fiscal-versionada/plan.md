@@ -22,6 +22,19 @@ tentativa e auditoria validados em ambiente sintético. Aceite final: 41 testes 
 ver [phase-2.md](validation/phase-2.md) e [ADR-0003](adrs/0003-fundacao-operacional.md).
 Isso não aprova P01–P04 nem implementa as histórias a partir da Phase 3.
 
+## Revisão de arquitetura por referência — 2026-11-05
+
+Desenho alvo em docs/architecture.md, baseado na inspeção somente leitura de Api.Conhecimento
+(servidor) e Api.Atendimento/Mcp (cliente) da solução CorporativoAI. Embeddings OpenAI para
+textos/consultas, persistência PgVector, cosseno, tools em /mcp e cliente HttpClientTransport/McpClient.
+Nomes planejados BuscarConhecimento/ResolverReferencia, com tipo/versão fiscal obrigatórios;
+Result estruturado e cópia JSON textual. Ingestão planejada em /api/v1/ingest.
+
+Api.RAG assume o papel de Api.Conhecimento; Api.Agente assume a orquestração consumidora,
+voltada a validações SPED e parecer com evidências. O segundo serviço está planejado na
+feature 002. A feature 001 continua sem LLM gerador dentro da RAG. T001–T018 são evidências
+históricas da fundação; T019–T084 foram adaptadas documentalmente. Não houve refatoração ou
+teste do desenho novo. Ver ADR-0004 e docs/reference-api-conhecimento.md.
 ## Summary
 
 Disponibilizar na Api.RAG uma base oficial compartilhada de manuais e guias PDF com texto
@@ -227,34 +240,35 @@ As tarefas existem e refletem esta revisão; sua geração não equivale a execu
 
 ### Source Code (repository root)
 
-Estrutura futura proposta; nenhum destes projetos ou arquivos de aplicação foi criado:
+Estrutura alvo revisada; fundação já implementada e novos componentes pendentes nas tasks.
+A árvore não é inventário de código atual.
 
 ```text
-src/
-└── Api.RAG/
-    ├── Endpoints/
-    ├── Application/Knowledge/       # Casos de uso e portas, organizados por funcionalidade
-    ├── Domain/Knowledge/            # Modelo, invariantes e linguagem do contexto
-    └── Infrastructure/Knowledge/    # Persistência, PDF, embeddings e adaptadores
-tests/
-└── Api.RAG.Tests/
-    ├── Unit/
-    ├── Integration/
-    ├── Contracts/
-    └── Evaluation/
+src/Api.RAG/
+  Controllers/                 # IngestController e administração autenticada
+  Ingestao/                    # Extração, segmentação e coordenação
+  Rag/                         # ConhecimentoService e OpenAiEmbeddingService
+  Tools/                       # BuscarConhecimentoTool e ResolverReferenciaTool
+  Domain/Knowledge/            # Invariantes preservadas
+  Application/Knowledge/       # Casos de uso e portas preservados
+  Infrastructure/              # SQL, configuração, segurança, consumo, auditoria
+  Endpoints/Contracts/         # Contratos compartilhados existentes
+  Endpoints/Middleware/        # Erros HTTP existentes
+  Program.cs
+ tests/Api.RAG.Tests/           # Unit, Contract, Integration, Evaluation, Capacity
 ```
 
-**Structure Decision**: um projeto web e um projeto de testes, com pastas por camada;
-domínio sem dependências dos SDKs e banco. Worker dentro da Api.RAG para evitar um novo
-serviço sem necessidade demonstrada. O projeto de testes justifica cliente MCP isolado e
-infraestrutura de integração. Api.Agente completa fica fora do escopo desta entrega.
+**Structure Decision**: um projeto web e um de testes nesta feature; organização funcional
+inspirada na Api.Conhecimento com limites DDD preservados. Não duplicar entidades, portas
+ou regras para reproduzir pastas. Api.Agente está planejada em specs/002-validacao-sped-parecer/,
+sem criar seu código nesta revisão.
 
 **Organização DDD e Clean Code**: Conhecimento Fiscal delimita o modelo desta feature;
 Análise Fiscal/Orquestração e Memória Conversacional são contextos relacionados, sem modelos
 compartilhados impostos por esta entrega. Casos de uso de ingestão, publicação, reprocessamento,
 retirada, busca e resolução histórica devem ter localização própria na aplicação. Domínio
 concentra regras de estado, aplicabilidade e identidade; infraestrutura implementa as portas
-necessárias. Endpoints REST/MCP delegam aos casos de uso; composição registra adaptadores.
+necessárias. Controllers/Tools REST/MCP delegam aos serviços/casos de uso; composição registra adaptadores.
 Testes de invariantes não dependem de HTTP, MCP ou banco. A organização física proposta é
 revisável, desde que esses limites sejam preservados e documentados.
 

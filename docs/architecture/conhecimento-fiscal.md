@@ -7,6 +7,9 @@ funcional DEVE ocorrer por MCP; REST é reservado à administração autenticada
 Api.Agente NÃO DEVE consultar diretamente seu banco. Não há regras fiscais
 implementadas pelo scaffold.
 
+Desenho integrado atualizado em [../architecture.md](../architecture.md). Este documento
+preserva as invariantes; caminhos das tarefas abertas seguem a revisão de 2026-11-05.
+
 ## Linguagem ubíqua
 
 | Termo | Significado e limite |
@@ -30,16 +33,18 @@ quando houver código correspondente, sem bibliotecas vazias.
   de ASP.NET Core, MCP, SQL, OpenAI ou infraestrutura.
 - `Application/Knowledge`: casos de uso e portas pequenas; DEVE depender do domínio
   e NÃO DEVE conhecer detalhes de transporte ou persistência.
-- `Infrastructure/Knowledge`: adaptadores de persistência, PDF e embeddings;
+- `Infrastructure/Knowledge`: persistência, observabilidade e adaptadores existentes;
   DEVE implementar portas da aplicação.
-- `Endpoints`: contratos e tradução REST/MCP, autenticação e entrada/saída;
+- `Controllers` e `Tools`: entrada REST/MCP; `Endpoints/Contracts` e middleware existentes permanecem compartilhados;
   DEVE delegar regras aos casos de uso.
+- `Ingestao`: extração/segmentação e coordenação de ingestão, sem duplicar invariantes.
+- `Rag`: ConhecimentoService e OpenAiEmbeddingService, preservando portas existentes.
 - `Program.cs`: raiz de composição; PODE conhecer adaptadores para registrá-los,
   mas NÃO DEVE conter regras de negócio.
 
 Os testes PODEM referenciar produção; produção NÃO DEVE referenciar testes.
 O SDK OpenAI será usado para embeddings nesta feature, sem geração de parecer.
-Semantic Kernel, A2A e memória conversacional pertencem às features da Api.Agente.
+Api.Agente (feature 002) executará validadores SPED, consumirá MCP e usará IA OpenAI para interpretar resultados e redigir parecer com evidências. Semantic Kernel, A2A e memória seguem seus incrementos próprios.
 Persistência e decisões relevantes seguem o ADR-0001 e os gates do plano.
 
 ## Clean Code e evolução ágil
