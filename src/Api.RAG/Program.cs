@@ -1,11 +1,16 @@
 using Api.RAG.Application.Knowledge.Concurrency;
+using Api.RAG.Application.Knowledge.Consulta;
+using Api.RAG.Application.Knowledge.Ingestao;
 using Api.RAG.Application.Knowledge.Ports;
+using Api.RAG.Controllers;
 using Api.RAG.Endpoints;
 using Api.RAG.Endpoints.Middleware;
 using Api.RAG.Infrastructure.Configuration;
 using Api.RAG.Infrastructure.Knowledge.Observability;
 using Api.RAG.Infrastructure.Knowledge.Persistence;
+using Api.RAG.Infrastructure.Knowledge.Processing;
 using Api.RAG.Infrastructure.Security;
+using Api.RAG.Ingestao;
 using Microsoft.AspNetCore.Http.Timeouts;
 using Microsoft.Extensions.Options;
 using ModelContextProtocol.AspNetCore;
@@ -51,6 +56,25 @@ public sealed class Program
         builder.Services.AddSingleton<ConsumptionRepository>();
         builder.Services.AddScoped<KnowledgeAuditReader>();
         builder.Services.AddScoped<IdempotencyCoordinator>();
+        builder.Services.AddControllers().ConfigureApplicationPartManager(manager =>
+            manager.FeatureProviders.Add(new KnowledgeControllerFeatureProvider()));
+        builder.Services.AddOptions<Microsoft.AspNetCore.Http.Features.FormOptions>().Configure<IOptions<RagOptions>>((options, configured) =>
+        {
+            options.ValueLengthLimit = 65536;
+            options.ValueCountLimit = 2; // Uma seção de arquivo e uma seção de metadados.
+            options.MultipartHeadersLengthLimit = 16384;
+            options.MultipartBodyLengthLimit = checked(configured.Value.Processing.MaxFileBytes!.Value + 131072);
+            options.BufferBody = false;
+        });
+        builder.Services.AddSingleton<IDocumentStore, DocumentRepository>();
+        builder.Services.AddSingleton<IPdfTextExtractor, PdfTextExtractor>();
+        builder.Services.AddSingleton<ITextSegmenter, TokenWindowSegmenter>();
+        builder.Services.AddScoped<IngerirFonte>();
+        builder.Services.AddScoped<IIngestionPolicy, IngestionPolicy>();
+        builder.Services.AddScoped<ProcessarGeracao>();
+        builder.Services.AddScoped<ConsultarIngestao>();
+        builder.Services.AddScoped<IKnowledgeAuditAccess, KnowledgeAuditAccess>();
+        builder.Services.AddHostedService<IngestionWorker>();
         builder.Services.AddRequestTimeouts();
         builder.Services.AddOptions<RequestTimeoutOptions>().Configure<IOptions<RagOptions>>((timeouts, options) =>
         {

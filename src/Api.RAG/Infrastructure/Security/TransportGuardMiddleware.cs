@@ -11,12 +11,17 @@ internal sealed class TransportGuardMiddleware(RequestDelegate next)
     public async Task InvokeAsync(HttpContext context, IOptions<RagOptions> options, IHostEnvironment environment)
     {
         var auth = options.Value.Authentication;
+        var maximum = options.Value.Processing.MaxFileBytes;
+        if (context.Request.Path.StartsWithSegments("/api/v1/ingest"))
+        {
+            maximum = checked(maximum + 131072); // Metadados limitados a 64 KiB e overhead multipart limitado.
+        }
         if (context.Features.Get<IHttpMaxRequestBodySizeFeature>() is { IsReadOnly: false } bodyLimit)
         {
-            bodyLimit.MaxRequestBodySize = options.Value.Processing.MaxFileBytes;
+            bodyLimit.MaxRequestBodySize = maximum;
         }
 
-        if (context.Request.ContentLength > options.Value.Processing.MaxFileBytes)
+        if (context.Request.ContentLength > maximum)
         {
             throw new KnowledgeException("FILE_TOO_LARGE");
         }

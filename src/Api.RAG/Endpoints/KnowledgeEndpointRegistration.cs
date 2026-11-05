@@ -30,6 +30,7 @@ internal static class KnowledgeEndpointRegistration
         app.UseMiddleware<TransportGuardMiddleware>();
         app.UseAuthentication();
         app.UseAuthorization();
+        app.MapControllers();
         app.MapGroup("/admin/v1").RequireAuthorization("knowledge.audit");
         app.MapMcp("/mcp").RequireAuthorization("knowledge.read");
         app.MapGet("/.well-known/oauth-protected-resource/mcp", (IOptions<RagOptions> configured) => Results.Json(new

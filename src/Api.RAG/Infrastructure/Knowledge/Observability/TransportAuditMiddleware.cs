@@ -11,7 +11,8 @@ internal sealed class TransportAuditMiddleware(RequestDelegate next)
     public async Task InvokeAsync(HttpContext context, IKnowledgeUnitOfWorkFactory factory, TimeProvider clock,
         IOptions<RagOptions> configured, IHostEnvironment environment)
     {
-        if (!context.Request.Path.StartsWithSegments("/mcp") && !context.Request.Path.StartsWithSegments("/admin"))
+        if (!context.Request.Path.StartsWithSegments("/mcp") && !context.Request.Path.StartsWithSegments("/admin") &&
+            !context.Request.Path.StartsWithSegments("/api/v1/ingest"))
         {
             await next(context);
             return;

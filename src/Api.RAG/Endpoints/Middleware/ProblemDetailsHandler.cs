@@ -46,6 +46,7 @@ internal sealed partial class ProblemDetailsHandler(RequestDelegate next, ILogge
         "FILE_TOO_LARGE" => 413,
         "UNSUPPORTED_FORMAT" => 415,
         "PDF_TEXT_UNAVAILABLE" => 422,
+        "PDF_PAGE_LIMIT" => 422,
         "ADMISSION_LIMIT" => 429,
         "INVALID_ARGUMENT" or "INVALID_METADATA" => 400,
         "OPERATION_TIMEOUT" => 504,
