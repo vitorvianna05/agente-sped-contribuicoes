@@ -1,0 +1,28 @@
+# Build e ferramentas locais
+**/bin/
+**/obj/
+TestResults/
+.vs/
+*.user
+*.suo
+packages/
+.cache/
+.DS_Store
+Thumbs.db
+*.tmp
+*.swp
+
+# Credenciais e configuração sensível
+.env
+.env.*
+!.env.example
+.aws/
+*.pfx
+*.p12
+*.key
+
+# Estado por máquina do Spec Kit
+.specify/feature.json
+.specify/extensions/*/local-config.yml
+.specify/integrations/packages/
+.specify/integrations/packages.json
