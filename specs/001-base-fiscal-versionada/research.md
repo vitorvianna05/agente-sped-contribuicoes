@@ -1,10 +1,16 @@
 # Pesquisa técnica — base fiscal versionada
 
-**Data**: 2026-10-29. **Estado**: Fase 0 concluída para desenho; dez respostas incorporadas.
+**Origem**: 2026-10-29. **Sincronização**: 2026-11-10. R01–R14 preservam a pesquisa do desenho; R15–R18 são registros datados. O estado implementado atual está em R19 e no plan.md.
+
+> **Aviso (2026-11-10):** as decisões de aprovação explícita, Idempotency-Key/If-Match,
+> reprocessamento/retirada administrativos, catálogo de perfil, retenção com expurgo manual e
+> descoberta de artefatos retidos registradas abaixo foram **substituídas** pela
+> [ADR 0009](adrs/0009-simplificacao-ingestao-busca.md). Elas permanecem apenas como histórico
+> da pesquisa; o estado vigente está em R19.
 Pré-requisitos de ativação e aceite P01–P04 estão em [plan.md](plan.md); não representam
 avaliação executada nem aprovação operacional.
 
-As decisões abaixo são propostas técnicas de planejamento. As dez escolhas de negócio
+As propostas históricas abaixo registram o planejamento original; não descrevem ausência de implementação hoje. As dez escolhas de negócio
 registradas em [spec.md](spec.md) permanecem preservadas. Pesquisa não aprova prazo de
 retenção, fontes fiscais, critérios de relevância ou metas operacionais em nome do usuário.
 
@@ -359,5 +365,33 @@ consulta → embedding → similaridade → BuscarConhecimento → ConhecimentoM
 substituição destrutiva de chunks, usuário do corpo, resposta fiscal somente em texto livre,
 SDK MCP 2.2.0 no lugar do 2.3.0 já restaurado ou índice HNSW presumido por comentário.
 Usuário confirmou IA generativa para interpretar resultados de validação e elaborar parecer
-com evidências na Api.Agente (feature 002), após validadores e MCP. Não foram aprovados modelos,
-dimensões, topK, limiares ou regras fiscais novos. Nenhum código foi alterado nesta revisão.
+com evidências na Api.Agente (feature 002), após validadores e MCP. Naquela revisão ainda não
+havia escolha de modelo/dimensão; a escolha posterior consta de R19. TopK, limiares e regras
+fiscais continuam dependentes de avaliação. O parágrafo registra somente a inspeção original.
+
+## R19 — Estado consolidado da implementação (2026-11-10)
+
+Esta seção prevalece como inventário atual sobre as formulações “proposta” e “pendente” dos
+registros históricos. Não foi realizada nova pesquisa externa de bibliotecas nesta sincronização.
+
+| Decisão | Estado comprovado e rastreio |
+| --- | --- |
+| Fronteiras e fila | Api.RAG implementada; PostgreSQL durável, workers hospedados e leases/checkpoints. ADR 0005/0006. |
+| Persistência | Originais bytea, texto/vetor/proveniência, perfis, operações, consumo e auditoria; nove migrações, aplicação/migrador distintos. Tabelas de catálogo/retenção sem uso após ADR 0009. Dimensionamento e backup pendentes. |
+| SDKs | MCP 2.3.0, OpenAI 2.14.0, Npgsql 10.0.3, Pgvector 0.3.2, PdfPig 0.1.16, Microsoft.AspNetCore.OpenApi 10.0.14 e Swashbuckle.AspNetCore.SwaggerUI 10.3.1 (ADR 0010). Fixadas nos artefatos do repositório. |
+| PDF/segmentação | Extração por página, sem OCR; structural/token-window com whitespace-v1 lexical, não BPE. Qualidade em corpus oficial não avaliada. |
+| Embeddings | Adaptador OpenAI e decorator medido, sem retries ocultos; uso conhecido preservado em vetor inválido; custo estimado com `OpenAI:Pricing`. Testes com HTTP simulado; ingestão real local do Guia Prático 1.35 (814 trechos, US$ 0,0093). |
+| Modelos | text-embedding-3-small (1536 no exemplo local); gpt-4.1-mini destinado ao parecer da Api.Agente (ADR 0010, substitui gpt-4o-mini). Escolha não fecha P02 nem AG014. |
+| Recuperação | Busca PgVector exata/cosseno, filtros relacionais e snapshot; perfil configurado, TopK padrão 5 e sem limiar quando ausentes. HNSW não adotado. |
+| MCP | BuscarConhecimento/ResolverReferencia em /mcp stateless, handlers explícitos e schemas resolvidos; contrato inalterado. Consumidor real em processo separado. |
+| Publicação/perfis | Automática ao concluir texto e vetores; nova versão da fonte retira as anteriores; reenvio reaproveita ou refaz geração. Sem approve, catálogo ou perfil adotado. ADR 0009. |
+| Retenção | Sem expurgo nem descoberta de artefatos; configuração exigida só como registro. ADR 0009. |
+| Autenticação local | Dispensa de JWT só em Development loopback, ator development-local, HTTPS/hosts mantidos. ADR 0008. P04 permanece pendente. |
+| Configuração | `OpenAI:ApiKey` (ou `Embeddings:ApiKey`); etapa vetorial ligada pela chave; ambiente Docker com pgAdmin; Swagger em Development. ADR 0010. Não é ambiente operacional aprovado. |
+
+Última execução: 97 testes aprovados, build sem avisos/erros e formatação verificada (2026-11-10).
+Não houve deploy; migrações aplicadas apenas no banco local de desenvolvimento.
+
+P02–P04 permanecem pendentes (P01 encerrado pela ADR 0009). Matriz completa de falhas/
+concorrência/acesso, avaliação, corpus oficial, capacidade 300 PDFs/5 consultas e recuperação/
+backup seguem tasks abertas. [Sincronização e rastreio](validation/sdd-synchronization.md).

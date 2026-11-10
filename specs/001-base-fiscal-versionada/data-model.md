@@ -30,15 +30,19 @@ Raiz de consistência de publicação: `documentVersionId`, `sourceId`, `officia
 
 - Unicidade `(sourceId, officialVersion)` no banco. Mesmo par e hash diferente: rejeitar
   `VERSION_CONTENT_CONFLICT` sem alterar origem, versões, publicação ou ponteiro ativo.
-- Mesmo par e mesmos bytes: reutilizar conteúdo/operação conforme idempotência, sem duplicata ativa.
-- Alteração do PDF exige outra versão oficial; reprocessamento não troca bytes da origem.
+- Mesmo par e mesmos bytes: reaproveitar a geração concluída/em andamento com trechos; se só
+  houver gerações com falha ou sem trechos, criar nova geração (ADR 0009). Sem duplicata ativa.
+- Alteração do PDF exige outra versão oficial; nova geração usa os bytes originais.
 - Aplicabilidades são registros filhos: `documentType`, `layoutVersion`, `officialBasis`,
-  `recordedBy`, `recordedAt`; alteração exige permissão administrativa e nova revisão.
+  `recordedBy`, `recordedAt`, gravados na primeira ingestão da versão.
   Não inferir compatibilidade pela versão do manual, proximidade textual ou data.
-- Aprovação inicial exige geração concluída e íntegra. Ator pode ser o mesmo que ingeriu.
-- Estados de publicação: `unpublished`, `published`, `withdrawn`, `purged`. Não confundir
-  com estado da operação. Fonte retirada não é restaurada por reprocessamento ou approve.
-  Restauração não tem caso de uso nesta entrega; requer regra explícita antes de ser oferecida.
+- Publicação é automática (`PublishGeneration`): geração `succeeded` com manifesto da própria
+  versão vira a ativa e a versão passa a `published`; `approvedBy`/`approvedAt` registram autor e
+  instante da primeira publicação. Nova geração concluída substitui a ativa.
+- Publicar uma versão retira (`Withdraw`) as demais versões `published` da mesma fonte.
+- Estados de publicação: `unpublished`, `published`, `withdrawn`, `purged` (`purged` só existe
+  em dados anteriores à ADR 0009). Não confundir com estado da operação. Uma versão `withdrawn`
+  volta a `published` se for reenviada e concluir (o envio mais recente vence).
 
 ### GeracaoProcessamento
 
@@ -47,8 +51,9 @@ Entidade identificada e persistida separadamente, pertencente à versão: `gener
 `completedAt?`, `supersededAt?`, `contentManifestHash?`, `failureCode?`.
 
 `queued → processing → succeeded | failed | cancelled`. Conteúdo de geração concluída é
-imutável. Apenas geração bem-sucedida pode ser ativada. Reprocessamento pode mudar extrator,
-segmentação e embeddings, preservando hash da origem. Metadados de auditoria não reescrevem texto.
+imutável. Apenas geração bem-sucedida pode ser ativada; ao ser ativada recebe `activated_at`, e a
+anterior recebe `superseded_at`. Estágios internos: `preparation_state` (texto) e
+`embedding_state` (vetores), cada um com lease e limite de tentativas próprios.
 O vínculo ativo é único por versão; gerações históricas não são elegíveis para novas buscas.
 
 ### Trecho e Referencia
@@ -62,8 +67,8 @@ fonte, versão, geração e trecho; nunca aponta para o trecho atualmente ativo 
 observados, a partir de 1), `printedLabels`, `section`, `reason` quando indisponível.
 Nenhuma página/seção inferida deve ser apresentada como observada. Página física e rótulo
 impresso são conceitos separados. Com localização ausente, referência continua recuperável
-pelo trecho persistido. Após expurgo, tombstone retorna indisponibilidade e não outro texto.
-Tombstone tem política própria em P01; inexistência posterior retorna `REFERENCE_NOT_FOUND`.
+pelo trecho persistido. A API não expurga conteúdo (ADR 0009); tombstones anteriores ainda
+retornam `REFERENCE_PURGED` e referência inexistente retorna `REFERENCE_NOT_FOUND`.
 
 ### PerfilProcessamento
 
@@ -72,28 +77,20 @@ Raiz imutável: `profileId`, `extractorVersion`, `normalizationVersion`, `segmen
 `embeddingMetric`, `queryNormalizationVersion`, `retrievalParameters`, `evaluationId?`,
 `adoptionState` (`candidate` ou `adopted`).
 
-Estratégia e parâmetros são externos/configuráveis, mas versionados. Nenhum valor de chunk,
-overlap, topK, limiar ou modelo final é aprovado neste documento. Adoção exige avaliação P02.
-A query deve usar espaço de embedding compatível, não apenas vetor de mesma dimensão.
-Persistir vetores com perfil e dimensão validados; busca exata sobre o perfil selecionado.
-Mudança incompatível não permite misturar distâncias ou ativar gerações incompatíveis com
-o perfil de busca do corpus. Migração de perfil exige plano e corte consistente do conjunto.
+Estratégia e parâmetros são externos/configuráveis, mas versionados (snapshot JSON por UUID e
+hash em `rag.processing_profiles`; UUID igual com definição diferente é `PROFILE_INCOMPATIBLE`).
+`adoptionState`/`evaluationId` são apenas validados quanto ao formato; não condicionam a busca.
+Perfil de busca: `Retrieval:AdoptedProfileId` ou o único perfil configurado, compatível com
+`Embeddings` (ADR 0009). `TopK` ausente = 5; `Threshold` ausente = sem corte. Nenhum valor de
+chunk, overlap, topK ou limiar foi avaliado (desvio registrado na ADR 0009).
+A query usa o mesmo espaço de embedding do perfil; busca exata por cosseno somente sobre
+gerações desse perfil, sem misturar distâncias de perfis diferentes.
 
-### ConfiguracaoCatalogo e avaliação isolada
+### Catálogo (removido)
 
-Registro de controle `catalogId`, `activeProfileId`, `revision`: a busca captura perfil e
-ponteiros ativos no mesmo snapshot. Troca de perfil do catálogo só ocorre após avaliação e
-quando todas as versões publicadas a manter na busca têm geração íntegra correspondente;
-se faltar uma, rejeitar ativação em vez de misturar espaços ou omitir fontes silenciosamente.
-Não há endpoint público de migração automática nesta entrega; sua execução é operação técnica
-controlada, versionada e validada em testes antes de adoção. Reprocessar com o mesmo perfil
-adotado segue a troca automática aprovada pelo usuário.
-
-Avaliação de candidato usa um snapshot isolado de gerações staged e expectativas aprovadas,
-sem publicar o candidato nas tools operacionais. O harness de testes tem acesso interno apenas
-ao ambiente isolado da Api.RAG, não fornece canal funcional alternativo à Api.Agente. Testes
-sintéticos de contrato podem adotar um perfil fake explícito no ambiente de teste; isso não
-é adoção de parâmetros de produção nem avaliação oficial de relevância.
+`ConfiguracaoCatalogo` e o corte técnico de perfil foram removidos na ADR 0009. A tabela
+`rag.catalog` permanece no esquema, sem uso. Testes sintéticos usam perfil `Fake` explícito,
+o que não é avaliação oficial de relevância.
 
 ### Operacao e TentativaConsumo
 
@@ -101,10 +98,13 @@ Operação: `operationId`, `type`, `documentVersionId?`, `generationId?`, `princ
 `correlationId`, `state`, `createdAt`, `startedAt?`, `finishedAt?`, `leaseUntil?`,
 `leaseOwner?`, `attemptNumber`, `resultCode?`, `idempotencyKeyDigest`, `requestDigest`.
 
-Término não pode anteceder criação, inclusive quando startedAt é nulo; domínio e banco validam essa cronologia. Chave de idempotência por principal e tipo de operação; reutilização com payload diferente
-é conflito. Constraint no banco protege repetição concorrente. Fila/lease persistidos permitem
-retomada; worker não depende de fila exclusivamente em memória. Efeitos são idempotentes,
-mas chamada ambígua ao provedor pode gerar nova tentativa faturável, sempre registrada.
+Término não pode anteceder criação, inclusive quando startedAt é nulo; domínio e banco validam essa cronologia.
+Não há chave de idempotência do cliente: `idempotencyKeyDigest` é derivado do próprio
+`operationId` (único por envio) e `requestDigest` cobre metadados + hash do arquivo. A repetição
+segura vem da identidade do documento (ver VersaoDocumental); a operação de um reenvio
+reaproveitado é descartada na mesma transação. Fila/lease persistidos permitem retomada;
+worker não depende de fila em memória. Chamada ambígua ao provedor pode gerar nova tentativa
+faturável, sempre registrada.
 
 Consumo por tentativa: `attemptId`, `operationId`, `correlationId`, `service`, `provider`,
 `model`, `startedAt`, `finishedAt?`, `status`, `inputTokens?`, `outputTokens?`,
@@ -114,29 +114,15 @@ Não persistir prompts ou PDF completo no evento. Intenção e desfecho são est
 interrupção entre rede e banco deixa desfecho desconhecido explícito. Retry oculto de SDK
 não pode omitir tentativas. Auditoria operacional fica na Api.RAG.
 
-### RetencaoArtefato
+### Retenção (sem expurgo)
 
-`retainedArtifactId`, `artifactType`, `artifactId`, `eventType` (`withdrawn` ou `superseded`),
-`eventAt`, `retentionCategory`, `policyVersion?`, `retentionDuration?`, `eligibleForExpurgeAt?`,
-`expurgedAt?`, `expurgedBy?`, `expurgeReason?`, `revision`.
-
-Valor ausente não significa zero. Sem prazo/política válida não há expurgo. Vencimento
-apenas torna elegível; exige ação manual de administrador central autorizado, com motivo e
-auditoria. Repetição não reinicia marco. Registrar versão da política e vencimento; alterações
-não antecipam exclusão silenciosamente. Não oferecer recálculo retroativo sem política aprovada.
-Expurgo não remove origem compartilhada com geração ativa ou outra retenção ainda vigente.
-Políticas de consulta/auditoria/originais/tombstones são entradas P01 antes da persistência real.
-
-Projeção administrativa de leitura, sem criar novo agregado: consulta por documentVersionId
-retorna retainedArtifactId, category, state (`retained`/`purged`), eventType/eventAt,
-policyVersion e eligibleForExpurgeAt nullable, eligibleForExpurge, impediments e revision.
-São somente metadados; sem PDF, texto, embedding ou endereço do armazenamento. Revision é
-token forte opaco por artefato, cobrindo revisão e metadados de elegibilidade projetados,
-usável literalmente em If-Match; não é a revisão da lista ou da versão documental.
-Ausência de política resulta em null nos valores desconhecidos, false na elegibilidade e
-impedimento explícito. Knowledge.audit central permite leitura, não knowledge.expurge.
-Recalcular o token/estado sob snapshot consistente no comando: revisão antiga retorna 412;
-mesmo com revisão atual, autorização/prazo/dependências são revalidados antes da exclusão.
+`RetencaoArtefato`, `ObrigacaoRetencao`, `RetentionDecision`, a projeção de artefatos retidos e o
+expurgo foram removidos (ADR 0009). A configuração `Retention` continua obrigatória para ingerir
+(`PolicyVersion`, `ApprovalReference`, `OriginalDays`, `ReferenceDays`, `AuditDays`, `QueryDays`,
+`ConsumptionDays` positivos; `AutomaticExpurgeEnabled=false`) e a versão da política é gravada
+com o original, mas nenhum prazo dispara exclusão: todo conteúdo permanece até remoção externa.
+As tabelas `retained_artifacts`, `retention_obligations`, `reference_tombstones` e
+`command_results` permanecem no esquema, sem uso pela aplicação.
 
 ### Avaliacao e Manifesto
 
@@ -144,14 +130,15 @@ mesmo com revisão atual, autorização/prazo/dependências são revalidados ant
 referências esperadas, negativos, rubrica, critérios, configurações candidatas, resultados,
 `fiscalApprover`, `approvedAt`, `technicalExecutor`, `executedAt?`, ambiente, tamanho/páginas,
 amostra e cache. Fiscal aprova conteúdo/expectativas; técnica organiza e executa. Resultado
-não executado não pode ser aprovado por preenchimento de relatório vazio.
+não executado não pode ser aprovado por preenchimento de relatório vazio. Entidade planejada,
+não implementada; após a ADR 0009 não condiciona publicação nem busca.
 
 ## Objetos de valor e portas
 
 Objetos de valor: identidade oficial, versão oficial, hash, aplicabilidade, localização,
 perfil de embedding e correlação. Validam formato/consistência, sem acessar banco ou HTTP.
 Agregados protegem invariantes de publicação; objetos de valor não recebem identidade própria
-sem necessidade. Serviços de domínio tratam elegibilidade e retenção; aplicação coordena
+sem necessidade. Domínio trata elegibilidade e publicação; aplicação coordena
 transações, permissões e chamadas às portas. Portas de persistência, PDF, embeddings, relógio e
 auditoria pertencem à aplicação/domínio conforme responsabilidade; infraestrutura as implementa.
 Não criar repositório genérico ou evento distribuído sem caso de uso demonstrado.
@@ -160,25 +147,23 @@ Não criar repositório genérico ou evento distribuído sem caso de uso demonst
 
 | Evento | Condição | Efeito atômico |
 | --- | --- | --- |
-| Ingestão concluída | PDF suportado e origem consistente | Geração succeeded; publicação unpublished, sem ativação automática. |
-| Aprovação inicial | Permissão central, revisão esperada e geração succeeded | published + ponteiro ativo + aprovador/data + auditoria. |
-| Reprocessamento concluído | Hash original preservado, geração íntegra, versão ainda published, revisão/ponteiro esperados | Troca integral de ponteiro, evento superseded e auditoria; sem nova aprovação. |
-| Falha/revisão concorrente | Geração incompleta, retirada ou estado mudou | Não trocar ponteiro nem reativar; registrar falha/superseded operation, manter histórico. |
-| Retirada | Permissão central e revisão esperada | withdrawn, registrar marco, impedir novas buscas; resolver referências historicamente. |
-| Expurgo | Permissão central específica, política válida vencida, artefato não ativo e sem dependência impeditiva | Remover conteúdo autorizado, tombstone/estado e auditoria; não executar por timer de vencimento. |
+| Texto preparado | PDF suportado e origem consistente | `preparation_state` ready, trechos persistidos; operação queued/EMBEDDINGS_PENDING; versão inalterada. |
+| Vetores concluídos | Todos os trechos com vetor válido | Geração succeeded + manifesto; versão published com esta geração ativa (`activated_at`), anterior `superseded_at`; demais versões published da fonte → withdrawn; auditoria. |
+| Falha | PDF ilegível, limite, timeout, provedor ou tentativas esgotadas | Geração/operação failed com código; ponteiro ativo e publicação inalterados. |
+| Reenvio reaproveitado | Geração da mesma versão/perfil concluída ou em andamento, com trechos | Operação nova descartada; devolve a existente; publica a geração concluída se a versão não estiver published. |
+| Reenvio após falha/trechos ausentes | Nenhuma geração reaproveitável | Nova operação + nova geração queued. |
 
-Autorização é revalidada no caso de uso; estado, prazo e revisão no momento do efeito.
-Transações são curtas, nunca abertas durante PDF/embeddings. Constraint de unicidade e lock/CAS
-protegem corridas. Consulta seleciona geração ativa e trechos no mesmo snapshot; busca em várias
-leituras exige transação consistente. Resolução concorrente a expurgo devolve texto exato
-consistente ou indisponibilidade, nunca conteúdo parcial ou de outra versão.
+Autorização é revalidada no caso de uso; estado no momento do efeito.
+Transações são curtas, nunca abertas durante PDF/embeddings. Constraint de unicidade, lock
+consultivo por identidade da fonte e lease protegem corridas. Consulta seleciona geração ativa e
+trechos no mesmo snapshot (RepeatableRead), nunca conteúdo parcial ou de outra versão.
 
 ## Verificação e gates
 
 Incremento textual dos ajustes 1–4: FonteOficial, VersaoDocumental, Aplicabilidade,
 GeracaoProcessamento, PerfilProcessamento, Trecho e Localizacao possuem implementação,
 com persistência em 0006_documents.sql. Referencia é o UUID global imutável vinculado ao
-trecho na mesma linha; resolução MCP/tombstone continuam futuros. Perfis são snapshots JSON
+trecho na mesma linha; resolução MCP/tombstone foram acrescentados no incremento seguinte. Perfis são snapshots JSON
 imutáveis por UUID/hash; aplicabilidades são filhos relacionais com ator/data do transporte.
 Originais incluem a versão da política de retenção. preparationState e preparationManifestHash
 registram o estágio textual separado da geração integral; ver ADR 0005.
@@ -187,5 +172,9 @@ FR-001–022 e QR-001–003 são verificados pelos cenários de quickstart.md; S
 protocolo com corpus de 300 PDFs e 5 consultas concorrentes. P01–P04 não estão satisfeitos por
 este modelo. A Phase 2 implementa Operacao, consumo, auditoria e cinco migrações de fundação,
 validadas no PostgreSQL isolado (validation/phase-2.md). O incremento textual adiciona a sexta
-migração e os modelos citados acima. Catálogo, avaliação, retenção operacional/expurgo e
-publicação continuam incrementos futuros; nenhum schema fiscal foi inventado.
+migração e os modelos citados acima. O incremento 5–11 adiciona migrações 0007/0008:
+embedding por trecho, estado/lease vetorial separado, manifesto integral e activated_at (em uso),
+além de catálogo, retenção, tombstones e command_results (sem uso após ADR 0009). A migração
+0009_retention_obligations também permanece apenas por compatibilidade. Nenhuma migração foi
+removida ou alterada: as nove continuam aplicadas na mesma ordem e com o mesmo checksum.
+Avaliação/capacidade oficiais continuam pendentes; nenhum schema fiscal foi inventado.

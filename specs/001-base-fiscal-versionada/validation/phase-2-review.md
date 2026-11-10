@@ -1,5 +1,7 @@
 # Correções da revisão — Phase 2
 
+> **Nota (2026-11-10):** relatório histórico; ver [ADR 0009](../adrs/0009-simplificacao-ingestao-busca.md) para o estado atual.
+
 Data: 2026-11-05. Escopo: quatro achados da revisão de princípios; T011, T014 e T016.
 
 | Achado | Correção | Evidência |

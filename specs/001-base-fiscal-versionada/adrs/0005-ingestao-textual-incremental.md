@@ -1,5 +1,7 @@
 # ADR 0005 — Ingestão textual antes da integração de embeddings
 
+> **Nota (2026-11-10):** a ingestão textual permanece; reenvio sem Idempotency-Key, publicação automática após vetores e remoção de approve/reprocess estão na [ADR 0009](0009-simplificacao-ingestao-busca.md).
+
 Data: 2026-11-05. Decisão: implementar os ajustes 1–4 solicitados, preservando o desenho
 completo da feature. Embeddings reais, busca, aprovação e tools funcionais são incrementos seguintes.
 

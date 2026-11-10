@@ -1,5 +1,7 @@
 # Evidências da implementação — Phase 1
 
+> **Nota (2026-11-10):** relatório histórico; idempotência por cabeçalho e expurgo foram removidos pela [ADR 0009](../adrs/0009-simplificacao-ingestao-busca.md).
+
 Data: 2026-10-30. Escopo autorizado: T001–T006. Esta fase está **parcial**.
 
 | Tarefa | Evidência | Estado |

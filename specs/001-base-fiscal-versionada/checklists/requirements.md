@@ -1,5 +1,7 @@
 # Specification Quality Checklist: Base de conhecimento fiscal versionada
 
+> **Nota (2026-11-10):** checklist da spec original; requisitos de aprovação/retirada/expurgo foram reescritos pela [ADR 0009](../adrs/0009-simplificacao-ingestao-busca.md).
+
 **Purpose**: Validar completude e qualidade da especificação antes do planejamento.
 **Created**: 2026-10-29
 **Feature**: [spec.md](../spec.md)

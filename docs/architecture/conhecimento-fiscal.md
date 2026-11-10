@@ -21,11 +21,12 @@ preserva as invariantes; caminhos das tarefas abertas seguem a revisão de 2026-
 | Geração | Resultado de um processamento com perfil identificado; nova geração não altera conteúdo ou referências anteriores. |
 | Trecho | Ocorrência textual segmentada dentro de uma geração, com posição observada quando disponível. |
 | Referência | Identificador recuperável e não reciclável da evidência; localização ausente é declarada, nunca fabricada. |
-| Publicação | Disponibilidade autorizada de uma versão para novas recuperações; processamento concluído não equivale à aprovação inicial. |
+| Publicação | Disponibilidade de uma versão para novas recuperações; ocorre automaticamente quando texto e vetores da geração concluem, e a versão mais recente de uma fonte retira as anteriores (ADR 0009). |
 
 ## Dependências e organização
 
-A solução DEVE manter apenas `src/Api.RAG` e `tests/Api.RAG.Tests` nesta feature.
+A feature 001 DEVE manter apenas `src/Api.RAG` e `tests/Api.RAG.Tests`; `src/Api.Agente` e
+`tests/Api.Agente.Tests` pertencem à feature 002 e acessam o conhecimento só por MCP.
 As camadas são lógicas dentro do projeto de produção; diretórios são introduzidos
 quando houver código correspondente, sem bibliotecas vazias.
 

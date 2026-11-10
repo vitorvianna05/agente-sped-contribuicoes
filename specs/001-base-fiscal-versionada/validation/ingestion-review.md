@@ -1,5 +1,7 @@
 # Correções da revisão dos ajustes 1–4
 
+> **Nota (2026-11-10):** relatório histórico; o reenvio agora segue a [ADR 0009](../adrs/0009-simplificacao-ingestao-busca.md) (sem chave de idempotência).
+
 Data: 2026-11-05. Escopo: cinco achados relacionados a requirements.md e architecture.md.
 
 | Achado | Correção | Evidência |

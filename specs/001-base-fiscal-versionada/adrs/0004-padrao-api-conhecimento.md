@@ -1,5 +1,7 @@
 # ADR-0004 — Adoção do padrão funcional Api.Conhecimento
 
+> **Nota (2026-11-10):** a *publicação explícita* desta decisão foi substituída por publicação automática ([ADR 0009](0009-simplificacao-ingestao-busca.md)). O padrão funcional e as tools MCP continuam vigentes.
+
 Data: 2026-11-05. Estado: desenho autorizado, implementação pendente nas tasks abertas.
 Origem: usuário indicou CorporativoAI.sln e confirmou IA generativa para interpretar os
 resultados das validações e elaborar parecer com evidências.

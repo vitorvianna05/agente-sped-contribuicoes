@@ -1,5 +1,7 @@
 # Evidência — ajustes 1–4 da API RAG
 
+> **Nota (2026-11-10):** relatório histórico; Idempotency-Key e aprovação foram removidos pela [ADR 0009](../adrs/0009-simplificacao-ingestao-busca.md).
+
 Data: 2026-11-05. Escopo autorizado: organização inspirada na Api.Conhecimento,
 ingestão administrativa, modelos/persistência e extração/segmentação de PDF.
 

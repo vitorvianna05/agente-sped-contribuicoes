@@ -1,5 +1,7 @@
 # ADR-0001 — Proposta de arquitetura da base fiscal versionada
 
+> **Nota (2026-11-10):** proposta inicial. Aprovação explícita, retirada/expurgo e catálogo descritos aqui foram substituídos pela [ADR 0009](0009-simplificacao-ingestao-busca.md); publicação passou a ser automática.
+
 **Data**: 2026-10-29
 **Estado**: Desenho proposto atualizado às dez respostas da spec; ativação e aceite sujeitos
 a P01–P04 em plan.md. Não representa aprovação operacional ou implementação concluída.

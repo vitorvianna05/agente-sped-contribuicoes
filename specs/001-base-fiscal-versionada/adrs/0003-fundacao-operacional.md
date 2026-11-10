@@ -1,5 +1,7 @@
 # ADR-0003 — Fundação de contratos, identidade e persistência
 
+> **Nota (2026-11-10):** Idempotency-Key, ETag/If-Match e políticas de expurgo desta fundação foram removidos da API pela [ADR 0009](0009-simplificacao-ingestao-busca.md). Operações, consumo e auditoria continuam vigentes.
+
 Data: 2026-11-05. Escopo: T007–T018, QR-001–003, FR-009/010/015–019.
 Estado: implementado e validado em ambiente sintético; não aprova gates P01–P04.
 ADR-0002 continua reservado ao perfil avaliado de T077.

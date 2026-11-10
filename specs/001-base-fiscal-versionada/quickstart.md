@@ -1,181 +1,113 @@
-# Guia de validação — base fiscal versionada
+# Quickstart — Api.RAG (ingestão e busca via MCP)
 
-Setup atualizado em 2026-11-05: projetos existem; restore, locked mode, build e um teste local de compatibilidade foram aprovados na T004 (validation/phase-1.md). T005 concluída: host sintético, dublês e cliente MCP em processo separado; seis testes Unit/Contract/Integration aprovados. Detalhes em validation/t005-infrastructure.md. Funcionalidades de negócio ainda pendentes. Não há evidência de ingestão, recuperação ou carga.
-
-Contratos: [REST administrativo](contracts/admin-rest.md), [MCP](contracts/mcp.md),
-[schemas](contracts/mcp-tools.schema.json). Regras e estados: [modelo](data-model.md).
-Gates e rastreabilidade: [plano](plan.md). Não usar uma fixture sintética como documento fiscal oficial.
-
-## Fundação disponível — Phase 2
-
-T007–T018 implementadas; 41 testes passaram no aceite sintético após revisão. Autenticação JWT e
-autorização, migrações segregadas, idempotência, consumo e auditoria estão disponíveis.
-MCP anuncia lista vazia de tools até as histórias respectivas. Configuração e comando real
-de migração estão em [validation/phase-2.md](validation/phase-2.md); o template Example é
-deliberadamente incompleto e não inicia o host sem entradas obrigatórias.
+Sincronização: 2026-11-10. Api.RAG oferece ingestão com publicação automática, vetorização e busca
+MCP ([ADR 0009](adrs/0009-simplificacao-ingestao-busca.md)). Última execução: 97 testes aprovados,
+build sem avisos/erros e formatação conferida; ingestão real local do Guia Prático da
+EFD-Contribuições 1.35 (814 trechos). Qualidade fiscal, capacidade e ambiente real não estão
+aprovados. A Api.Agente (consumidora MCP) é a Feature 002.
 
 ## Pré-requisitos
 
-- SDK estável .NET 10 selecionado pelo global.json; PowerShell; HTTPS de desenvolvimento.
-- PostgreSQL com extensão PgVector compatível, banco lógico da Api.RAG e identidades distintas
-  de migração e aplicação. Usar instância isolada para testes, com permissões restritas.
-- Pacotes fixados e compatibilidade verificada na implementação. Versões restauradas e fixadas nos lockfiles pela T004. Endpoint MCP e cliente real devem usar a mesma revisão compatível documentada.
-- Emissor/audience configurados e tokens de teste para consumidor, administrador central e
-  administrador organizacional sem atribuição central. Não registrar tokens nos artefatos.
-- Limites finitos: arquivo, páginas/processamento, argumentos, timeout, retries, admissão e lease.
-  Valores de ensaio explícitos em configuração de teste, sem promovê-los a política de produção.
-- Políticas sintéticas de retenção em teste, com relógio controlável. Para dados reais, P01:
-  prazos aprovados e política própria de originais, referências, tombstones, auditoria e consultas.
-- Fixtures técnicas: PDF textual válido, sem localização recuperável, sem texto útil, formato
-  não suportado, versões distintas, bytes conflitantes sob mesma versão e texto com instruções.
-- Para avaliação oficial: P02 preenchido, responsáveis designados, manifesto e expectativas
-  aprovados pelo fiscal. Para capacidade: 300 PDFs caracterizados, conforme P03.
+- SDK selecionado por global.json (10.0.303) e pacotes do repositório.
+- Docker ativo: ambiente local (PostgreSQL/pgvector + pgAdmin) e testes de integração.
+- Não reutilizar configuração Fake de testes em Development ou produção. Chaves e conexões
+  ficam em User Secrets/ambiente/`appsettings.Development.json` (ignorado pelo Git), nunca no chat.
 
-## Configuração esperada da implementação
+## Ambiente local em quatro passos
 
-O projeto deverá documentar configuração externa, validar entradas obrigatórias e manter
-segredos em variáveis de ambiente ou secret manager. Grupos de configuração planejados:
+Detalhes: [configuração local](../../docs/development-configuration.md) e
+[ADR 0010](adrs/0010-ambiente-local-openai-swagger.md).
 
-| Grupo | Conteúdo obrigatório |
+```powershell
+./scripts/local/setup-rag.ps1                       # containers, User Secrets e migrações
+dotnet run --project src/Api.RAG --launch-profile Api.RAG
+./scripts/local/ingest-sample.ps1 -SkipCertificateCheck   # PDF sintético; -PdfPath para um real
+```
+
+1. `setup-rag.ps1` gera `infra/local/.env`, sobe PostgreSQL (127.0.0.1:5433) e pgAdmin
+   (http://localhost:5050), grava `ConnectionStrings:Rag`/`RagMigration` e aplica as 9 migrações.
+2. O perfil Api.RAG roda em Development (https://localhost:60994) e abre `/swagger`.
+3. Preencher `OpenAI:ApiKey` liga a etapa vetorial; sem chave a ingestão para em
+   `ready`/`EMBEDDINGS_PENDING` e o documento não entra na busca.
+4. Concluídos texto e vetores, o documento é publicado e pode ser consultado pelas tools MCP.
+
+`Authentication:DisabledForDevelopment=true` vale somente em Development e conexões loopback
+(ator `development-local`); HTTPS/hosts continuam exigidos ([ADR 0008](adrs/0008-configuracao-local-modelos.md)).
+
+## Configuração
+
+| Grupo | Conteúdo |
 | --- | --- |
-| ConnectionStrings | Conexão Api.RAG; migração usa identidade separada. |
-| Authentication | Emissor, audience e permissões atribuídas explicitamente. |
-| Processing / Retrieval | Perfis versionados, parâmetros candidatos ou adotados e limites finitos. |
-| Embeddings | Provedor/modelo/dimensão compatíveis, credencial protegida e política de tentativas. |
-| Retention | Categorias, prazos, versão da política e retenção de cada classe persistida. |
-| Evaluation | Manifesto aprovado, critérios prévios e diretório de relatórios sem segredos. |
+| ConnectionStrings | Rag e RagMigration; identidades distintas para aplicação e migração. |
+| Authentication | JWT/emissor/audience/recurso HTTPS, hosts/origens e atribuições centrais no modo normal; em Development, `AllowedOrigins` inclui `https://localhost:60994` (Swagger). |
+| Processing | Limites (bytes, páginas, concorrência, timeout, lease, tentativas), `EmbeddingStageEnabled` (null = liga com a chave) e `Profiles`. |
+| Retrieval | `AdoptedProfileId` (opcional se houver um único perfil), tamanho e timeout da consulta. |
+| Embeddings / OpenAI | Provider, dimensões, timeout e tentativas; `OpenAI:ApiKey`, `EmbeddingModel`, `ChatModel` e `Pricing`. |
+| Retention | Exigida para ingerir (versão, referência e prazos positivos), apenas registrada: não há expurgo. |
 
-Exemplos criados na T006: src/Api.RAG/appsettings.Example.json e tests/Api.RAG.Tests/Fixtures/synthetic-settings.json. Registro em validation/gates.md; validação de configuração implementada na T008; Resource, AllowedHosts e atribuições centrais devem ser fornecidos externamente.
-Configuração ausente de retenção deve impedir expurgo; ausência de perfil adotado impede consulta
-operacional, sem falsificar resultado vazio. Ambiente sintético usa provider/relógio controlados.
+A chave não é lida de `OPENAI_API_KEY`. `Processing:ProfileApprovalReference` e a seção
+`Evaluation` não têm efeito. Campos desconhecidos permanecem nulos, nunca zero.
 
-## Comandos PowerShell após implementação
+## Comandos de validação técnica
 
-Executar a partir da raiz do repositório. Os testes usam categorias Unit, Contract,
-Integration, Evaluation e Capacity para permitir os filtros abaixo; não criar um projeto extra
-apenas para cada categoria.
+Executar da raiz, com Docker ativo para a suíte completa. Os testes não fazem chamadas OpenAI
+faturáveis: o transporte é simulado e os dados são sintéticos.
 
 ```powershell
-dotnet --version
-dotnet restore src/Api.RAG/Api.RAG.csproj
-dotnet restore tests/Api.RAG.Tests/Api.RAG.Tests.csproj
-dotnet build src/Api.RAG/Api.RAG.csproj --no-restore
-dotnet test --project tests/Api.RAG.Tests/Api.RAG.Tests.csproj --filter-trait "Category=Unit"
-dotnet test --project tests/Api.RAG.Tests/Api.RAG.Tests.csproj --filter-trait "Category=Contract" --report-xunit-trx
-dotnet test --project tests/Api.RAG.Tests/Api.RAG.Tests.csproj --filter-trait "Category=Integration" --report-xunit-trx
+dotnet restore AgenteSpedContrib.slnx --locked-mode
+dotnet build AgenteSpedContrib.slnx --no-restore
+dotnet test --project tests/Api.RAG.Tests/Api.RAG.Tests.csproj --no-restore --filter-trait Category=Unit
+dotnet test --project tests/Api.RAG.Tests/Api.RAG.Tests.csproj --no-restore --report-xunit-trx --results-directory TestResults/current-validation
+dotnet format AgenteSpedContrib.slnx --verify-no-changes --no-restore
 ```
 
-Após migrações explícitas pela identidade própria e configuração, iniciar serviço:
+Se a API estiver rodando, o executável fica bloqueado: pare-a antes de compilar ou use
+`--artifacts-path` com uma pasta separada.
 
-```powershell
-dotnet run --project src/Api.RAG/Api.RAG.csproj --no-build
-```
+## Migração e jornada
 
-Comando explícito de migração implementado na T013: dotnet run --project src/Api.RAG/Api.RAG.csproj --no-build --no-launch-profile -- --migrate, com as duas conexões externas. Integração sintética automatizada usa FoundationDatabase.
-Este guia não inventa script de migração ou compose disponível. Integração deverá subir o
-servidor e usar cliente MCP real; mocks não comprovam compatibilidade de transporte.
+Migração explícita (as duas conexões configuradas): `dotnet run --project src/Api.RAG --no-launch-profile -- --migrate`.
+As nove migrações são aplicadas sem alteração; tabelas de catálogo/retenção ficam sem uso.
+
+Fluxo: POST `/api/v1/ingest` (multipart `arquivo` + `metadata`) → acompanhar `location` até
+`succeeded` → versão `published` → `BuscarConhecimento` / `ResolverReferencia` em `/mcp`
+com `tipoDocumento` e `versaoLayout` iguais a uma aplicabilidade do documento.
+Para refazer um documento, reenviá-lo: geração com falha ou sem trechos é refeita; geração
+concluída é reaproveitada. Não apagar trechos à mão.
 
 ## Cenários ponta a ponta e resultados esperados
 
-| Cenário | Ações pelo cliente administrativo/MCP | Resultado |
+| Cenário | Ações | Resultado |
 | --- | --- | --- |
-| Ingestão e publicação | POST /api/v1/ingest; acompanhar; buscar antes de approve; approve pelo mesmo administrador; buscar novamente. | 202/operação concluída não publica; antes da aprovação nenhum trecho ativo; após, referências resolvíveis e fonte correta. |
-| Formatos | Enviar schema, imagem/PDF sem texto ou conteúdo inválido. | Recusa suportada pelo contrato ou operação failed, sem evidência ativa; localização ausente não é inventada. |
-| Deduplicação | Repetir upload e executar dois uploads simultâneos com mesma identidade/versão/bytes. | Uma representação ativa, identidade preservada, nenhuma redundância causada por retry. |
-| Conflito | Enviar bytes diferentes sob mesma identidade/versão. | 409 VERSION_CONTENT_CONFLICT; origem e publicação anteriores intactas; só outra versão oficial permite atualização. |
-| Aplicabilidade | Consultar layout compatível e incompatível com textos semelhantes. | Nenhum trecho incompatível; versão de manual e de layout permanecem distintas. |
-| Falta de evidências | Consultar caso negativo e simular dependência indisponível. | Limitação normal no primeiro; technical_failure/isError no segundo; sem conformidade ou referência fabricada. |
-| Reprocessamento | Reprocessar fonte published, consultar durante, concluir e repetir com falha. | Antiga ativa até sucesso; troca integral automática; falha preserva antiga; referências antigas não mudam. |
-| Corrida com retirada | Retirar fonte enquanto reprocessamento termina. | Fonte não é reativada; novas buscas excluem trechos; referências históricas resolvem conteúdo citado. |
-| Descoberta para expurgo | Consultar GET retained-artifacts com knowledge.audit central, obter ID/revision por item e conferir lista vazia, versão inexistente e política ausente. | Somente metadados, sem PDF/texto/embedding; sem política elegibilidade false e impedimentos; auditoria não concede expurgo. |
-| Retenção | Descobrir artefato/revision; expurgar sem política, antes de prazo e sem permissão; avançar relógio e executar ação manual autorizada. | Negar três primeiros; vencimento isolado nada apaga; expurgo permitido auditado; referência informa indisponibilidade. |
-| Corrida após descoberta | Ler metadados elegíveis e revision; alterar estado/política/dependência representada antes de POST expurge com If-Match antigo. | 412 sem exclusão; reler item e revalidar autorização/prazo/dependências; leitura anterior não autoriza o efeito. |
-| Segurança | Consumidor tenta escrever; administrador organizacional tenta aprovar; documento pede ignorar filtros. | Acesso negado sem efeito; conteúdo não altera política, filtros ou permissões. |
-| Consumo | Simular embeddings com retry, timeout e métricas ausentes. | Cada tentativa registrada; nulos explícitos; nenhuma cobrança desconhecida convertida em zero. |
+| Ingestão e publicação | POST /api/v1/ingest; acompanhar; buscar antes e depois dos vetores. | Antes dos vetores nenhum trecho ativo; depois, `published` e referências resolvíveis. |
+| Sem chave OpenAI | Ingerir sem `OpenAI:ApiKey`. | Operação para em `ready`/`EMBEDDINGS_PENDING`; versão `unpublished`. |
+| Formatos | Enviar schema, imagem/PDF sem texto ou conteúdo inválido. | Recusa (415/422) ou operação failed, sem evidência ativa. |
+| Repetição | Reenviar o mesmo documento, inclusive simultaneamente. | Mesma operação devolvida; nenhuma operação órfã; nenhuma redundância. |
+| Conflito | Bytes diferentes sob mesma identidade/versão. | 409 VERSION_CONTENT_CONFLICT; nada alterado. |
+| Reenvio após falha | Falha do provedor, depois reenvio. | Nova operação/geração; ao concluir, publicada. |
+| Nova versão | Ingerir outra `officialVersion` da mesma fonte. | Nova versão `published`; anterior `withdrawn`; referências antigas resolvem com estado. |
+| Aplicabilidade | Consultar layout compatível e incompatível. | Nenhum trecho incompatível. |
+| Falta de evidências | Caso negativo e dependência indisponível. | `insufficient_evidence` no primeiro; `technical_failure`/isError no segundo. |
+| Rotas removidas | Chamar approve/reprocess/withdraw/retained-artifacts/expurge. | 404. |
+| Segurança | Consumidor tenta ingerir; documento pede ignorar filtros. | Acesso negado; conteúdo não altera política ou filtros. |
+| Consumo | Embeddings com retry, timeout e métricas ausentes; preço configurado. | Cada tentativa registrada; custo estimado com `OpenAI:Pricing`; nulos explícitos. |
 
-A resolução histórica deve devolver texto exato ou indisponibilidade sob concorrência com expurgo,
-sem resposta parcial ou conteúdo de geração diferente. Verificar revogação/permissão a cada chamada.
+## Avaliação e capacidade (pendentes)
 
-## Avaliação e adoção de parâmetros
-
-Antes de executar com dados/provedores reais, concluir T075 (aprovação P01) e T076 (ambiente
-P04) em tasks.md. A avaliação oficial T077 depende explicitamente desses gates; ensaio de
-capacidade T078 os herda via T077. Testes sintéticos continuam isolados e não os aprovam.
-
-1. Fiscal aprova manifesto de PDFs oficiais, versões/aplicabilidade, perguntas e evidências
-   esperadas; técnica versiona o conjunto e registra critérios de relevância antes da execução.
-2. Comparar segmentação estrutural e outros candidatos, modelos/dimensões compatíveis, topK
-   e limiares sem transformar candidatos em defaults de produção. Registrar tempo, custo,
-   precisão/recuperação de referências esperadas e negativos conforme rubrica aprovada.
-3. Executar a categoria de avaliação somente com P02 satisfeito:
+A avaliação comparativa (T069/T070/T077) documenta parâmetros, mas não condiciona a busca
+(ADR 0009). O ensaio SC-009/010 (T072/T073/T078) exige 300 PDFs caracterizados e 5 consultas
+concorrentes, ≥95% completas em até 5s medidas no cliente MCP, falhas no denominador.
 
 ```powershell
 dotnet test --project tests/Api.RAG.Tests/Api.RAG.Tests.csproj --filter-trait "Category=Evaluation" --report-xunit-trx
-```
-
-4. Relatório deve identificar corpus/hash, perfil, aprovador, executor, critérios e resultados.
-   Sem aprovação ou com critério obrigatório falho, não adotar perfil operacional.
-
-## Capacidade e latência — SC-009/010
-
-Antes do ensaio, registrar bytes/páginas dos 300 PDFs, quantidade de trechos, perfis, máquina,
-banco, conectividade do provedor, amostra/duração e condições de cache. Manter cinco consultas
-concorrentes efetivamente em execução; não simular concorrência apenas com cinco chamadas sequenciais.
-
-```powershell
 dotnet test --project tests/Api.RAG.Tests/Api.RAG.Tests.csproj --filter-trait "Category=Capacity" --report-xunit-trx
 ```
 
-A categoria deverá medir no cliente MCP do envio até resposta completa, incluindo embedding da
-pergunta, busca, transporte e referências/limitações; exclui geração de parecer LLM. Aceitar
-somente se ≥95% de todas as consultas da amostra concluírem em até 5 segundos. Falhas/timeouts
-não são sucessos e não saem do denominador ou relatório. Registrar percentil e percentual de
-sucessos dentro da meta; garantir invariantes de qualidade em todas as respostas.
+Essas categorias ainda não têm testes implementados. Não afirmar desempenho de fixtures
+pequenas como cumprimento da meta.
 
-Não afirmar desempenho medido em fixtures pequenas como cumprimento da meta de 300 PDFs.
-Se busca exata/bytea não atenderem, medir alternativa e revisar ADR antes de mudar arquitetura.
+## Histórico
 
-## Saída da validação
-
-Entregar relatório com comandos realmente executados, ambiente, passou/falhou/ignorado,
-TRX quando gerado, links a requisitos/SC e P01–P04 ainda abertos. Não declarar aceitação
-produtiva com corpus não aprovado, políticas ausentes ou teste obrigatório não executado.
-## Desenho alvo aprovado em 2026-11-05
-
-A documentação passou a seguir a estrutura funcional da Api.Conhecimento/Api.Atendimento:
-Controllers, Ingestao, Rag, Tools e cliente ConhecimentoMcpClient na futura Api.Agente.
-Ver docs/architecture.md e specs/002-validacao-sped-parecer/. Trata-se de desenho, não código
-migrado. Ingestão planejada: POST /api/v1/ingest, arquivo + metadata. MCP: BuscarConhecimento
-com consulta/tipoDocumento/versaoLayout e ResolverReferencia com referenceId. O consumidor
-lê JSON validado de structuredContent/TextContentBlock e usa OpenAI para interpretar os
-resultados determinísticos e produzir parecer com evidências. Esse parecer não integra o
-SLA de recuperação da RAG. Nenhum teste de interoperabilidade do desenho novo foi executado.
-
-## Incremento executável: ingestão textual (ajustes 1–4)
-
-O POST `/api/v1/ingest` e os GET `/admin/v1/operations/{id}` e
-`/admin/v1/document-versions/{id}` estão implementados. Enviar um PDF em `arquivo`,
-JSON `metadata` conforme contracts/admin-rest.md, Bearer token central com
-`knowledge.ingest` e cabeçalho `Idempotency-Key`. Leitura exige `knowledge.audit`.
-A resposta 202 fornece Location e operation.operationId; consultar até preparationState
-ser ready ou state ser failed. Ready retorna EMBEDDINGS_PENDING: ainda não é ingestão
-integral concluída, publicação ou evidência disponível por MCP.
-
-Antes do host, configurar conexão da aplicação, identidade distinta de migração, JWT,
-hosts/origens HTTPS, limites, retenção aprovada e perfil completo versionado. Executar
-`dotnet run --project src/Api.RAG -- --migrate` com configuração externa para aplicar
-as seis migrações. O comando tem efeito no banco configurado: este incremento foi
-validado somente em PostgreSQL descartável, sem executar migração de ambiente real.
-Perfil de extração requer UUID e versões suportadas documentadas no contrato. Parâmetros
-candidatos de exemplo estão em tests/Api.RAG.Tests/Fixtures/synthetic-settings.json;
-provider Fake é restrito a Testing e não é configuração de operação real.
-
-Teste reproduzível sem OpenAI: comandos e resultado (60 testes) em
-[validation/ingestion-adjustments.md](validation/ingestion-adjustments.md).
-Aprovação, embeddings e tools funcionais continuam pendentes; ver ADR 0005.
-
-Revisão dos ajustes 1–4: configurar também `Processing.MaxPreparationAttempts` como inteiro
-positivo externo. Todos os perfis configurados devem estar completos e ter UUIDs únicos
-por valor; configuração inválida impede a inicialização. Reingestões retornam a identidade
-e os horários completos da operação original. Falhas técnicas e esgotamento de retomadas
-ficam explícitos no acompanhamento. Evidência: [ingestion-review.md](validation/ingestion-review.md).
+Os relatórios Phase 1/2, ajustes 1–4 e [rag-complete.md](validation/rag-complete.md) descrevem
+estados anteriores (incluindo o ciclo administrativo removido). Inventário e pendências em
+[sdd-synchronization.md](validation/sdd-synchronization.md) e nas tasks abertas.

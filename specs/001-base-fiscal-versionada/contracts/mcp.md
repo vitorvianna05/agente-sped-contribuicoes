@@ -28,8 +28,11 @@ correspondentes; o arquivo é catálogo de schemas, não formato de mensagem JSO
 | `ResolverReferencia` | Recuperar exatamente o trecho citado, inclusive histórico retido autorizado. | ResolveInput: referenceId. | Result com evidência exata e estado active/superseded/withdrawn, ou indisponibilidade tipada. |
 
 Não aceitar topK, limiar, perfil arbitrário, identidade, bypass de versão ou URL de download
-em argumentos. O servidor usa perfil adotado após P02; perfil ausente é falha de configuração,
-não consulta concluída sem evidência. Strings vazias são inválidas mesmo com formato JSON válido.
+em argumentos. O servidor usa o perfil configurado: `Retrieval:AdoptedProfileId` ou, se vazio, o
+único perfil de `Processing:Profiles`, compatível com provedor/modelo/dimensão de `Embeddings`
+([ADR 0009](../adrs/0009-simplificacao-ingestao-busca.md)); `TopK` ausente = 5 e `Threshold`
+ausente = sem corte. Perfil ausente, ambíguo ou incompatível é falha de configuração
+(`PROFILE_INCOMPATIBLE`), não consulta concluída sem evidência. Strings vazias são inválidas mesmo com formato JSON válido.
 Tamanhos máximos e timeout devem vir de configuração finita P04, aplicada além do schema.
 
 ## Semântica de resultado
@@ -46,8 +49,9 @@ por modelo; não existe gerador de parecer nesta feature.
   avaliada, com limitação explícita. Pode incluir evidências parciais; não fabricar referência.
 - `invalid_context`: tipo/versão/contexto de negócio insuficiente; não presumir versão. Formato
   inválido continua erro de protocolo/schema. O cliente pode corrigir o contexto, não fazer retry cego.
-- `reference_unavailable`: referência conhecida expurgada ou inexistente; evidences vazio,
-  limitação e código REFERENCE_PURGED/REFERENCE_NOT_FOUND. Nenhum texto substituto.
+- `reference_unavailable`: referência inexistente (ou com tombstone de expurgo anterior à
+  ADR 0009; a API não expurga mais); evidences vazio, limitação e código
+  REFERENCE_NOT_FOUND/REFERENCE_PURGED. Nenhum texto substituto.
 - `technical_failure`: dependência, timeout, perfil ausente ou erro de execução; evidences vazio,
   error não nulo, correlação e `isError: true` no envelope da tool. Não disfarçar como busca vazia.
 
@@ -66,7 +70,8 @@ structuredContent deve obedecer ao schema e deve ter cópia textual JSON equival
 3. `evidence_found` exige evidência não vazia; `reference_unavailable`, `invalid_context` e
    `technical_failure` exigem zero evidências. `insufficient_evidence` pode conter evidência parcial.
 4. Resolução retorna no máximo um trecho; não inclui busca por similaridade ou atualização
-   automática de referência. Estado withdrawn/superseded não impede resolução durante retenção.
+   automática de referência. Estado withdrawn (versão substituída por outra versão da mesma
+   fonte) ou superseded (geração substituída por reenvio) não impede a resolução.
 5. location unavailable exige reason e nenhum número de página inventado; location available
    exige localizador observado. Rótulo impresso e página física ficam separados.
 6. technical_failure exige error e correlação, demais status exigem error null. A descoberta de
@@ -85,8 +90,8 @@ necessário. Nenhum retry contorna versão ou troca protocolo.
 ## Aceite
 
 Cliente real deve descobrir/listar tools, validar schemas e executar ambas. Cobrir autorização,
-sem resposta, versão incompatível, localização indisponível, falha externa, retirada, expurgo,
-cancelamento e concorrência. Medir pelo cliente todas as consultas da amostra de SC-009/010,
+sem resposta, versão incompatível, localização indisponível, falha externa, substituição por nova
+versão, cancelamento e concorrência. Medir pelo cliente todas as consultas da amostra de SC-009/010,
 incluindo embedding e resposta completa, no perfil de 300 PDFs e 5 consultas simultâneas.
 ≥95% devem concluir em até 5s; falhas/timeouts não são sucessos e não saem do relatório.
 ## Revisão de integração — 2026-11-05
@@ -110,3 +115,17 @@ Exemplo de arguments (placeholders técnicos, não versão oficial aprovada):
 ```json
 {"consulta":"Fundamento para a inconsistência encontrada","tipoDocumento":"<tipo-identificado>","versaoLayout":"<versao-identificada>"}
 ```
+
+## Implementação dos ajustes 5–11
+
+As duas tools estão registradas nos handlers do SDK 2.3.0 com schemas do catálogo resolvidos,
+saída estruturada/textual validada e autorização por execução. Os trechos seguem as regras de
+aplicabilidade, publicação, perfil e histórico efetivamente ativado. O consumidor de testes em
+processo separado valida os schemas e confronta texto/structuredContent antes de aceitar saída.
+A descrição anterior de lista vazia é histórica da fundação. Evidências em validation/rag-complete.md.
+
+## Simplificação — 2026-11-10
+
+Contrato das tools inalterado. Muda apenas o que é elegível: a versão entra na busca assim que
+texto e vetores concluem (sem `approve`), a versão mais recente de uma fonte retira as anteriores,
+e o perfil é o configurado, sem catálogo nem perfil `adopted`. Ver ADR 0009.

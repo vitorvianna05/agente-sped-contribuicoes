@@ -5,7 +5,11 @@
 
 **Created**: 2026-10-29
 
-**Status**: Draft — duas rodadas de cinco esclarecimentos concluídas; pendências remanescentes explícitas.
+**Status (2026-11-10)**: implementação técnica disponível no modelo simplificado
+(ingestão com publicação automática + busca via MCP; [ADR 0009](adrs/0009-simplificacao-ingestao-busca.md)).
+Aprovação manual, retirada administrativa, expurgo e catálogo saíram do escopo por decisão
+definitiva do responsável. Avaliação fiscal, capacidade e aceite operacional permanecem pendentes;
+[estado e rastreio](validation/sdd-synchronization.md).
 
 **Base normativa**: constitution 1.1.0; requisitos de DDD, Clean Code e arquitetura ágil
 incorporados por solicitação do usuário em 2026-10-29, sem alterar as cinco decisões anteriores.
@@ -24,18 +28,41 @@ semântica e servidor MCP. A Api.Agente consumirá as evidências para interpret
 determinísticos e elaborar parecer com IA generativa, planejada na feature 002.
 O objetivo continua validar arquivos SPED Contribuições. Similaridade não aprova layouts,
 referências históricas não são descartadas e o LLM não substitui validadores obrigatórios.
-A revisão altera documentação/contratos planejados, sem modificar o código da fundação.
+Essa revisão original foi documental. A implementação posterior está consolidada no plan.md
+e nas evidências de 2026-11-10; não constitui aceite fiscal/produtivo.
+## Decisões posteriores já autorizadas — sincronização 2026-11-10
+
+O modelo escolhido é text-embedding-3-small, com 1536 dimensões no exemplo local, e o gerador
+para a Api.Agente é gpt-4.1-mini (`OpenAI:ChatModel`, [ADR 0010](adrs/0010-ambiente-local-openai-swagger.md);
+substitui gpt-4o-mini da ADR 0008). São responsabilidades separadas; modelos permanecem configuráveis/versionados.
+
+A dispensa de JWT solicitada pelo usuário foi limitada a Development loopback na Api.RAG,
+com ator development-local, HTTPS/hosts mantidos e recusa da flag fora desse ambiente.
+Não altera FR-015/016 como obrigação para operação normal, não aprova exposição externa,
+não dispensa retenção/perfil nem fecha P04. Detalhes e evidências: [ADR 0008](adrs/0008-configuracao-local-modelos.md).
+A constitution e os IDs FR/QR/SC foram preservados nesta sincronização.
+
+## Simplificação — 2026-11-10
+
+Decisão definitiva do responsável ([ADR 0009](adrs/0009-simplificacao-ingestao-busca.md)):
+a feature passa a cobrir somente ingestão e busca via MCP. Ingestão concluída (texto + vetores)
+publica automaticamente; a versão mais recente de uma fonte substitui as anteriores na busca;
+não há `Idempotency-Key`, `If-Match`, aprovação, reprocessamento/retirada administrativos,
+catálogo de perfil nem expurgo. A busca usa o perfil configurado sem exigir avaliação. Os IDs
+FR/SC foram preservados; os requisitos afetados estão reescritos ou marcados como removidos.
+Desvio constitucional (§5 e Definition of Done de retenção/exclusão) registrado na ADR 0009.
+
 ## Clarifications
 
 ### Session 2026-10-29
 
 - Q: A base de documentos oficiais será compartilhada entre organizações ou cada organização terá sua própria base? → A: Base oficial compartilhada entre organizações, alterada somente por administradores centrais e consultada por consumidores autorizados (opção A).
-- Q: Após a ingestão bem-sucedida, o documento deve ficar disponível automaticamente ou exigir aprovação administrativa explícita? → A: Exigir aprovação explícita de administrador central; quem ingeriu também pode aprovar (opção B).
-- Q: Quando uma fonte já disponível for reprocessada, como deve ocorrer a substituição dos trechos usados nas consultas? → A: Manter os trechos atuais e substituí-los automaticamente após reprocessamento bem-sucedido, sem nova aprovação (opção A).
-- Q: Quando uma fonte for retirada de novas consultas, o conteúdo já citado deve continuar acessível pelas referências anteriores? → A: Preservar o conteúdo citado para consumidores autorizados durante a retenção aprovada, com indicação de retirada e exclusão das novas buscas (opção A).
+- Q: Após a ingestão bem-sucedida, o documento deve ficar disponível automaticamente ou exigir aprovação administrativa explícita? → A: Exigir aprovação explícita de administrador central; quem ingeriu também pode aprovar (opção B). **Substituída em 2026-11-10: disponibilização automática (ADR 0009).**
+- Q: Quando uma fonte já disponível for reprocessada, como deve ocorrer a substituição dos trechos usados nas consultas? → A: Manter os trechos atuais e substituí-los automaticamente após reprocessamento bem-sucedido, sem nova aprovação (opção A). **Mantida em 2026-11-10, com reprocessamento por reenvio do mesmo documento.**
+- Q: Quando uma fonte for retirada de novas consultas, o conteúdo já citado deve continuar acessível pelas referências anteriores? → A: Preservar o conteúdo citado para consumidores autorizados durante a retenção aprovada, com indicação de retirada e exclusão das novas buscas (opção A). **Ajustada em 2026-11-10: retirada ocorre só por nova versão da fonte; referências continuam resolvíveis, sem expurgo.**
 - Q: Quais tipos de documentos devem compor a primeira entrega e seu conjunto de avaliação? → A: Manuais e guias em PDF com texto extraível; schemas e documentos digitalizados ficam para outra entrega (opção A).
 
-- Q: Qual política deve controlar a retenção e a exclusão definitiva de fontes retiradas e gerações substituídas? → A: Prazo obrigatório configurável por categoria, contado da retirada ou substituição, com exclusão manual por administrador central somente após o vencimento; prazos definidos antes da ativação (opção A).
+- Q: Qual política deve controlar a retenção e a exclusão definitiva de fontes retiradas e gerações substituídas? → A: Prazo obrigatório configurável por categoria, contado da retirada ou substituição, com exclusão manual por administrador central somente após o vencimento; prazos definidos antes da ativação (opção A). **Substituída em 2026-11-10: a API não exclui conteúdo; a configuração de retenção é apenas registrada (ADR 0009).**
 
 - Q: Quem será responsável por selecionar os documentos oficiais e aprovar as perguntas e evidências esperadas do conjunto de avaliação? → A: Responsável fiscal seleciona e aprova fontes, perguntas e evidências esperadas; equipe técnica organiza e executa a avaliação (opção A).
 
@@ -49,6 +76,14 @@ A revisão altera documentação/contratos planejados, sem modificar o código d
 
 - Q: Qual função de IA além dos embeddings? → A: Interpretar os resultados das validações e elaborar o parecer com evidências, na Api.Agente consumidora MCP (feature 002).
 - Diretriz: seguir o padrão funcional Api.Conhecimento/Api.Atendimento, preservando contexto fiscal, rastreabilidade e validações determinísticas.
+
+### Session 2026-11-10
+
+- Q: Como simplificar o processo? → A: Retirar Idempotency-Key e If-Match; apenas ingerir dados e buscar conhecimento via MCP.
+- Q: Após texto e vetores concluídos, o documento entra na busca automaticamente? → A: Sim, publicação automática.
+- Q: O que fazer com approve, reprocess, withdraw, retained-artifacts e expurge? → A: Remover da API.
+- Q: A busca deve exigir perfil adotado/avaliado e catálogo? → A: Não; usar o perfil configurado.
+- Q: O desvio é temporário ou definitivo? → A: Definitivo, com Vitor Vianna como responsável.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -67,8 +102,8 @@ e referências resultantes, sem depender de uma análise tributária ou de gera�
 
 1. **Given** documento oficial suportado com origem, identificação, versão e aplicabilidade,
    **When** o administrador o ingere, **Then** o processamento é identificado, produz trechos
-   vinculados à fonte e informa conclusão ou falha. A conclusão bem-sucedida mantém a fonte
-   aguardando aprovação explícita, sem disponibilização automática. (FR-001 a FR-004, FR-013, FR-018)
+   vinculados à fonte e informa conclusão ou falha. A conclusão bem-sucedida (texto e vetores)
+   disponibiliza a fonte automaticamente para consulta. (FR-001 a FR-004, FR-013, FR-018)
 2. **Given** ausência de identificação, origem, versão ou aplicabilidade obrigatória,
    **When** ocorre a ingestão, **Then** a fonte não fica disponível para consulta e a pendência
    é informada, sem preenchimento inventado. (FR-002, FR-003)
@@ -131,11 +166,11 @@ base preparada, verificando resultados distintos e suas limitações.
 ### User Story 4 - Atualizar e reprocessar sem redundância (Priority: P2)
 
 Como administrador autorizado, quero repetir ingestões, atualizar versões e reprocessar fontes
-sem duplicar trechos nem perder a identificação do conteúdo consultado anteriormente.
+(reenviando o documento) sem duplicar trechos nem perder a identificação do conteúdo consultado.
 
 **Why this priority**: a base precisa evoluir preservando rastreabilidade e integridade.
 
-**Independent Test**: repetir uma ingestão, reprocessar a mesma versão e adicionar outra;
+**Independent Test**: repetir uma ingestão, reenviar após falha e adicionar outra versão;
 comparar trechos ativos, estados e referências antes e depois.
 
 **Acceptance Scenarios**:
@@ -143,38 +178,31 @@ comparar trechos ativos, estados e referências antes e depois.
 1. **Given** mesma fonte, versão, conteúdo e configuração de processamento, **When** a ingestão
    é repetida, inclusive concorrentemente, **Then** não há trechos redundantes disponíveis e
    a repetição é identificada. (FR-010)
-2. **Given** nova versão oficial de uma fonte, **When** é incorporada, **Then** a versão anterior
-   não é sobrescrita como se fosse a nova e consultas continuam respeitando aplicabilidade.
-   (FR-006, FR-011)
-3. **Given** versão já disponível, **When** seu reprocessamento falha, **Then** não são misturados
-   trechos incompletos com uma geração concluída; a geração anteriormente ativa permanece
+2. **Given** nova versão oficial de uma fonte, **When** é incorporada e concluída, **Then** a
+   versão anterior não é sobrescrita; ela sai da busca (retirada) e suas referências continuam
+   resolvíveis com indicação de estado. Consultas continuam respeitando aplicabilidade.
+   (FR-006, FR-011, FR-013, FR-014)
+3. **Given** versão já disponível, **When** um novo processamento dela falha, **Then** não são
+   misturados trechos incompletos com uma geração concluída; a geração ativa permanece
    disponível e o resultado da tentativa é registrado.
    (FR-012, FR-018)
 4. **Given** mesmo identificador e versão com conteúdo diferente, **When** ocorre nova ingestão,
    **Then** a entrada conflitante é rejeitada e o conteúdo existente permanece inalterado;
    uma atualização de conteúdo somente é aceita com outra versão oficial. Revisão interna
    ou reprocessamento NÃO DEVEM contornar essa rejeição. (FR-011)
-5. **Given** fonte retirada de consulta por administrador autorizado, **When** há nova consulta,
+5. **Given** versão retirada da busca por uma versão mais recente, **When** há nova consulta,
    **Then** seus trechos não retornam como evidência ativa e referências anteriores preservam
-   identidade e indicação do estado. Durante a retenção aprovada, consumidores autorizados
-   conseguem recuperar por essas referências o conteúdo originalmente citado, acompanhado
-   da indicação de retirada, sem substituição por outra versão. (FR-013, FR-014)
-6. **Given** fonte já disponível com reprocessamento em andamento, **When** ocorre consulta,
-   **Then** a geração anteriormente ativa continua disponível até a troca. Após conclusão
-   bem-sucedida, a nova geração substitui automaticamente a anterior em conjunto, sem nova
-   aprovação e sem misturar gerações no resultado. (FR-012, FR-013)
+   identidade e indicação de estado `withdrawn`, retornando o conteúdo originalmente citado,
+   sem substituição por outra versão. (FR-013, FR-014)
+6. **Given** versão já disponível com novo processamento em andamento, **When** ocorre consulta,
+   **Then** a geração ativa continua disponível até a troca. Após conclusão bem-sucedida, a nova
+   geração substitui automaticamente a anterior em conjunto, sem misturar gerações. (FR-012, FR-013)
+7. **Given** documento cuja última tentativa falhou ou cujos trechos não existem mais, **When**
+   o mesmo documento é reenviado, **Then** é criada nova geração e o processamento é refeito;
+   documento concluído e reenviado não é reprocessado. (FR-010, FR-012)
 
-7. **Given** política configurada para a categoria e prazo ainda não vencido, **When** um
-   administrador tenta expurgar conteúdo retirado ou substituído, **Then** a exclusão é negada.
-   Após vencimento, somente ação manual de administrador central autorizado pode expurgá-lo,
-   com auditoria; ausência de prazo configurado impede expurgo e vencimento não o executa
-   automaticamente. (FR-014, FR-015, FR-016)
-8. **Given** versão com artefatos retidos, **When** administrador central com permissão de
-   auditoria consulta seus metadados, **Then** recebe identificador, categoria, estado, evento,
-   política/vencimento quando configurados, elegibilidade, impedimentos e revisão de cada
-   artefato, sem conteúdo documental. Sem essa permissão a consulta é negada. A leitura não
-   autoriza expurgo; alteração concorrente exige nova consulta após rejeição da revisão.
-   (FR-014, FR-015, FR-016)
+Cenários removidos em 2026-11-10 (ADR 0009): expurgo manual após prazo e consulta administrativa
+de artefatos retidos.
 
 ### User Story 5 - Administrar acesso e avaliar qualidade (Priority: P2)
 
@@ -189,25 +217,24 @@ com respostas esperadas, versões incompatíveis e perguntas sem resposta.
 
 **Acceptance Scenarios**:
 
-1. **Given** identidade sem permissão administrativa, **When** tenta ingerir, atualizar,
-   reprocessar ou retirar fonte, **Then** a ação é negada sem alteração dos dados. (FR-015)
+1. **Given** identidade sem permissão administrativa, **When** tenta ingerir ou consultar o
+   acompanhamento administrativo, **Then** a ação é negada sem alteração dos dados. (FR-015)
 2. **Given** consumidor com permissão somente de consulta, **When** tenta administrar fontes,
    **Then** a permissão de análise não autoriza a alteração. (FR-015)
 3. **Given** ação administrativa permitida ou negada, **When** é executada, **Then** é possível
    identificar ator, ação, objeto, data, correlação e resultado sem expor segredos. (FR-016)
 4. **Given** configurações candidatas, **When** são avaliadas, **Then** há relatório comparável
-   por configuração e exemplos antes da escolha de segmentação e parâmetros. (FR-020, FR-021)
-   A avaliação somente DEVE ser aceita com fontes, perguntas e evidências esperadas aprovadas
-   pelo responsável fiscal e execução registrada pela equipe técnica.
+   por configuração e exemplos. (FR-020, FR-021) A avaliação somente DEVE ser aceita com fontes,
+   perguntas e evidências esperadas aprovadas pelo responsável fiscal e execução registrada pela
+   equipe técnica. Desde a ADR 0009 a avaliação não condiciona o uso do perfil na busca.
 5. **Given** consumidores autorizados de organizações distintas, **When** consultam a mesma
    fonte e versão, **Then** acessam a base oficial compartilhada; ser administrador de uma
    organização sem permissão administrativa central não permite alterar essa base. (FR-015)
-6. **Given** fonte processada com sucesso e ainda não aprovada, **When** um consumidor consulta,
-   **Then** seus trechos não são retornados como evidência ativa. (FR-013)
-7. **Given** fonte processada com sucesso e aguardando aprovação, **When** administrador
-   central aprova explicitamente sua disponibilização, **Then** ela se torna elegível para
-   consultas e a aprovação registra ator, data e resultado. O aprovador PODE ser o mesmo
-   responsável pela ingestão. (FR-013, FR-015, FR-016)
+6. **Given** fonte com texto preparado mas vetores ainda não concluídos, **When** um consumidor
+   consulta, **Then** seus trechos não são retornados como evidência ativa. (FR-013)
+7. **Given** fonte com texto e vetores concluídos, **When** o processamento termina, **Then**
+   ela se torna elegível para consultas automaticamente e a publicação registra autor, data e
+   auditoria. (FR-013, FR-016)
 
 ### Edge Cases
 
@@ -217,14 +244,15 @@ com respostas esperadas, versões incompatíveis e perguntas sem resposta.
 - Documento vazio, corrompido ou com extração sem conteúdo útil: falhar com motivo, sem publicação.
 - PDF sem texto extraível ou cujo conteúdo necessário dependa de reconhecimento de imagem:
   recusar como não suportado nesta entrega, sem alegar cobertura de conteúdo não extraído.
-- Interrupção, repetição concorrente ou erro no reprocessamento: não expor uma geração incompleta.
+- Interrupção, repetição concorrente ou erro no processamento: não expor uma geração incompleta.
   A geração ativa anterior permanece disponível em caso de falha; o sucesso substitui a geração
-  automaticamente, sem nova aprovação. Reprocessamento NÃO DEVE reativar fonte retirada.
-- Processamento bem-sucedido sem aprovação explícita: manter conteúdo fora da recuperação ativa.
+  automaticamente. Reenviar uma versão retirada a publica novamente (o envio mais recente vence).
+- Processamento sem vetores concluídos (ex.: sem chave do provedor): manter fora da busca.
+- Trechos apagados manualmente: o reenvio do mesmo documento reprocessa; referências já
+  devolvidas daqueles trechos deixam de resolver.
 - Localização inexistente: declarar ausência; referência à fonte não substitui essa declaração.
-- Referência de fonte retirada: permitir recuperação do conteúdo originalmente citado por
-  consumidores autorizados durante a retenção, indicando a retirada; após expurgo, informar
-  indisponibilidade sem apontar para outro texto.
+- Referência de versão retirada ou geração substituída: recuperar o conteúdo originalmente
+  citado, indicando o estado, sem apontar para outro texto.
 - Falha técnica: diferenciar consulta não concluída de busca concluída sem evidência suficiente.
 - Ausência de fonte oficial para provar compatibilidade: manter a relação não aprovada.
 - Bytes diferentes sob a mesma identidade e versão oficial: rejeitar sem publicar revisão
@@ -260,46 +288,27 @@ com respostas esperadas, versões incompatíveis e perguntas sem resposta.
   ou versões distintas NÃO DEVEM perder proveniência pela deduplicação textual.
 - **FR-011**: Atualização DEVE preservar distinção entre versões. Conteúdo diferente com mesma
   identidade e versão DEVE ser rejeitado com conflito explícito, preservando o conteúdo
-  existente. Atualização de conteúdo DEVE exigir outra versão oficial; revisão interna ou
-  reprocessamento NÃO DEVEM permitir substituir os bytes da origem sob a mesma identidade
-  e versão. Reprocessamento do mesmo conteúdo com outra configuração continua permitido
-  conforme FR-012.
-- **FR-012**: Reprocessamento DEVE registrar geração e resultado e impedir mistura de gerações
+  existente. Atualização de conteúdo DEVE exigir outra versão oficial; reenvio NÃO DEVE
+  permitir substituir os bytes da origem sob a mesma identidade e versão.
+- **FR-012**: Cada processamento DEVE registrar geração e resultado e impedir mistura de gerações
   incompletas com conteúdo disponibilizado como concluído. Para fonte já disponível, a geração
   ativa DEVE permanecer consultável durante o processamento e em caso de falha. Após conclusão
-  bem-sucedida, a nova geração DEVE substituir automaticamente a anterior em conjunto, sem
-  nova aprovação administrativa; cada resultado de consulta NÃO DEVE misturar essas gerações
-  da mesma versão documental. A troca DEVE preservar a identidade das referências anteriores
-  conforme FR-014 e registrar a mudança conforme FR-016. Reprocessamento NÃO DEVE reativar
-  fonte retirada nem dispensar a aprovação inicial de uma fonte ainda não disponibilizada.
-- **FR-013**: Administradores autorizados DEVEM poder disponibilizar e retirar fontes de novas
-  consultas. Após ingestão bem-sucedida, a fonte DEVE aguardar aprovação explícita de
-  administrador central antes de ficar elegível para recuperação. O aprovador PODE ser o
-  responsável pela ingestão; segregação entre essas pessoas NÃO DEVE ser obrigatória.
-  Conclusão da ingestão inicial NÃO DEVE disponibilizar a fonte automaticamente; a substituição
-  de geração de fonte já disponível DEVE seguir a exceção explícita de FR-012. Conteúdo em
-  processamento, falho, aguardando aprovação ou retirado NÃO DEVE aparecer como evidência ativa.
-- **FR-014**: Alterações de ciclo de vida DEVEM preservar identidade das referências anteriores
-  e informar indisponibilidade quando o conteúdo não puder ser recuperado. A retirada de uma
-  fonte DEVE excluí-la de novas buscas, mas NÃO DEVE impedir consumidores autorizados de
-  recuperar seu conteúdo originalmente citado por referências anteriores durante a retenção
-  aprovada. Essa recuperação DEVE indicar o estado retirado e NÃO DEVE substituir o conteúdo
-  citado por outra versão. O mecanismo de retenção DEVE ser implementado de forma
-  parametrizada, sem prometer preservação indefinida. Após expurgo, a
-  resolução DEVE indicar indisponibilidade sem fabricar evidência.
-  Para fontes retiradas e gerações substituídas, a retenção DEVE ter prazo obrigatório
-  configurável por categoria, contado da retirada ou substituição correspondente. A exclusão
-  definitiva DEVE ser manual, executada por administrador central com permissão explícita,
-  somente após vencer o prazo; vencimento isolado NÃO DEVE excluir conteúdo automaticamente.
-  Os prazos por categoria e as regras de exclusão DEVEM estar aprovados antes da ativação
-  da política e da persistência operacional correspondente. Sem configuração válida, o
-  sistema NÃO DEVE permitir expurgo. Testes PODEM utilizar políticas sintéticas explicitamente
-  identificadas. Exclusão DEVE ser auditada conforme FR-016.
-  Administradores centrais com permissão de auditoria DEVEM poder consultar somente os
-  metadados dos artefatos retidos por versão documental: identificador, categoria, estado,
-  evento/data, política e vencimento quando configurados, elegibilidade, impedimentos e
-  revisão a usar na precondição de expurgo. A leitura NÃO DEVE conceder permissão de exclusão;
-  o comando DEVE revalidar autorização, prazo, revisão e dependências na transação do efeito.
+  bem-sucedida, a nova geração DEVE substituir automaticamente a anterior em conjunto; cada
+  resultado de consulta NÃO DEVE misturar gerações da mesma versão documental. A troca DEVE
+  preservar a identidade das referências anteriores (FR-014) e ser auditada (FR-016).
+  Reprocessar ocorre reenviando o mesmo documento: somente quando a última geração falhou ou
+  não possui trechos; geração concluída ou em andamento é reaproveitada.
+- **FR-013** *(reescrito em 2026-11-10, ADR 0009)*: Após ingestão bem-sucedida (texto e vetores),
+  a versão DEVE ficar elegível para recuperação automaticamente, sem aprovação manual, e a
+  publicação DEVE registrar autor e data. A publicação de uma versão DEVE retirar das novas
+  buscas as demais versões publicadas da mesma fonte. Conteúdo em processamento, falho, sem
+  vetores ou retirado NÃO DEVE aparecer como evidência ativa.
+- **FR-014** *(reescrito em 2026-11-10, ADR 0009)*: Substituições de geração e retiradas por nova
+  versão DEVEM preservar a identidade das referências anteriores. A resolução de referência
+  DEVE devolver o conteúdo originalmente citado com o estado (`active`, `superseded`,
+  `withdrawn`), sem substituí-lo por outra versão, e informar indisponibilidade sem fabricar
+  evidência quando a referência não existir. A API NÃO DEVE excluir conteúdo: retenção é
+  apenas registrada e não há expurgo nem consulta de artefatos retidos.
 - **FR-015**: Ações administrativas DEVEM exigir permissão explícita; permissão de consulta
   NÃO DEVE conceder administração. A base oficial DEVE ser compartilhada entre organizações
   e alterada somente por administradores centrais. Consumidores autorizados DEVEM poder
@@ -315,8 +324,8 @@ com respostas esperadas, versões incompatíveis e perguntas sem resposta.
   limitação correlacionáveis; falhas NÃO DEVEM ser apresentadas como operações concluídas.
 - **FR-019**: Documentos e trechos DEVEM permanecer dados não confiáveis; suas instruções
   NÃO DEVEM alterar permissões, política do sistema ou restrições de versão.
-- **FR-020**: Antes de aceitar parâmetros de segmentação ou recuperação, DEVE haver avaliação
-  documentada com fontes e versões identificadas, perguntas representativas, evidências
+- **FR-020** *(sem efeito de gate desde 2026-11-10, ADR 0009)*: A avaliação de parâmetros de
+  segmentação ou recuperação, quando executada, DEVE ser documentada com fontes e versões identificadas, perguntas representativas, evidências
   esperadas, casos negativos e critérios de aprovação definidos antes da execução.
   O conjunto inicial DEVE avaliar manuais e guias oficiais em PDF com texto extraível;
   schemas e documentos digitalizados NÃO DEVEM compor o escopo de recuperação desta entrega,
@@ -327,7 +336,8 @@ com respostas esperadas, versões incompatíveis e perguntas sem resposta.
   Preparação técnica NÃO DEVE substituir a aprovação fiscal das expectativas.
 - **FR-021**: O relatório de avaliação DEVE identificar conjunto usado, configurações candidatas,
   resultados e justificativa da escolha. Tamanho de trecho, quantidade recuperada e limiar
-  NÃO DEVEM ser fixados sem essa evidência.
+  vigentes são configuração de desenvolvimento não avaliada (TopK padrão 5, sem limiar), por
+  desvio registrado na ADR 0009; não DEVEM ser apresentados como parâmetros avaliados.
 
 - **FR-022**: A ingestão DEVE gerar embeddings dos trechos por um provedor de IA configurado;
   a recuperação DEVE gerar o embedding da consulta em espaço compatível e ordenar candidatos
@@ -361,8 +371,7 @@ como substitutos dos resultados funcionais ou como escolhas de bibliotecas e pas
   nesta entrega); relaciona-se a versões documentais. Schemas permanecem fora do escopo inicial.
 - **Versão documental**: versão identificada da fonte, conteúdo e aplicabilidade por tipo e
   versão do documento analisado; seu estado controla elegibilidade para novas consultas.
-  Processamento concluído e aprovação de disponibilização DEVEM ser distinguíveis; a aprovação
-  DEVE identificar administrador central e data, inclusive quando ele também realizou a ingestão.
+  A publicação é automática ao concluir o processamento e registra autor e data.
 - **Compatibilidade documentada**: relação de aplicabilidade fundamentada em fonte oficial;
   não é deduzida apenas por semelhança textual ou ordenação de versões.
 - **Trecho (chunk)**: unidade recuperável de conteúdo, com identidade, versão da fonte,
@@ -374,9 +383,9 @@ como substitutos dos resultados funcionais ou como escolhas de bibliotecas e pas
 - **Referência**: identidade recuperável de fonte, versão e trecho; localização não é
   fabricada e indisponibilidade posterior não muda o conteúdo originalmente referenciado.
   Retirada de novas buscas e acesso histórico por referência DEVEM ser distinguíveis:
-  consumidores autorizados mantêm acesso ao conteúdo citado durante a retenção aprovada.
+  consumidores autorizados mantêm acesso ao conteúdo citado.
 - **Avaliação**: conjunto versionado de exemplos, expectativas, critérios, configurações
-  candidatas, resultados e decisão de adoção.
+  candidatas e resultados; não condiciona o uso do perfil desde a ADR 0009.
 
 ## Success Criteria *(mandatory)*
 
@@ -389,14 +398,9 @@ como substitutos dos resultados funcionais ou como escolhas de bibliotecas e pas
 - **SC-003**: Em 100% das respostas de aceite com evidências, cada trecho possui referência
   resolvível, origem, identificação e versão; localização ausente é declarada em todos os
   casos correspondentes, com zero localizações inventadas. (FR-004, FR-009, FR-014)
-  Em 100% dos casos de retirada durante a retenção, referências anteriores permitem ao
-  consumidor autorizado conferir o conteúdo citado e seu estado retirado, sem incluí-lo
-  em novas buscas; após expurgo, indicam indisponibilidade sem trocar a evidência.
-  Todos os casos de expurgo antes do prazo, sem prazo ou sem permissão central são negados;
-  vencimento não causa exclusão automática, e expurgo manual permitido gera auditoria.
-  Nos casos de descoberta administrativa, identificadores e revisões permitem endereçar o
-  artefato correto sem expor conteúdo; consulta sem permissão e expurgo com revisão desatualizada
-  são negados, mesmo quando uma leitura anterior informou elegibilidade.
+  Em 100% dos casos de versão retirada por versão mais recente, referências anteriores permitem
+  ao consumidor autorizado conferir o conteúdo citado e seu estado retirado, sem incluí-lo
+  em novas buscas.
 - **SC-004**: Em 100% dos casos negativos previstos, o consumidor distingue evidência
   insuficiente de falha técnica, sem conclusão de conformidade ou referência fabricada.
   (FR-007, FR-008, FR-018)
@@ -404,17 +408,16 @@ como substitutos dos resultados funcionais ou como escolhas de bibliotecas e pas
   negadas sem mudanças de dados; todas as operações previstas têm registro auditável.
   Consumidores autorizados de organizações distintas consultam a mesma base oficial, e
   administradores organizacionais sem permissão central não conseguem alterá-la.
-  Em 100% dos casos de ingestão bem-sucedida ainda não aprovada, nenhum trecho é retornado
-  como evidência ativa; aprovação pelo próprio administrador central que ingeriu é permitida.
-  (FR-015, FR-016)
+  Em 100% dos casos de ingestão com vetores ainda não concluídos, nenhum trecho é retornado
+  como evidência ativa; ingestão concluída fica disponível sem etapa manual. (FR-013, FR-015, FR-016)
 - **SC-006**: Em todos os casos de atualização, conflito e falha de reprocessamento previstos,
   versões permanecem distinguíveis e zero gerações incompletas são expostas como concluídas.
-  Nos casos de reprocessamento de fonte disponível, a geração anterior permanece consultável
-  até a troca e em caso de falha; o sucesso substitui a geração sem nova aprovação e sem
-  mistura de gerações em uma resposta. Todos os casos de conteúdo diferente sob a mesma
+  Nos casos de reprocessamento (reenvio) de fonte disponível, a geração anterior permanece
+  consultável até a troca e em caso de falha; o sucesso substitui a geração sem mistura de
+  gerações em uma resposta. Todos os casos de conteúdo diferente sob a mesma
   identidade e versão oficial DEVEM ser rejeitados sem alteração da origem existente.
   (FR-001 a FR-003, FR-011 a FR-014, FR-018)
-- **SC-007**: Antes da adoção de parâmetros, existe ao menos um relatório comparativo com
+- **SC-007** *(sem efeito de gate desde 2026-11-10, ADR 0009)*: Para considerar parâmetros avaliados, existe ao menos um relatório comparativo com
   exemplos representativos e critérios previamente definidos; todos os critérios obrigatórios
   do conjunto aprovado são atendidos. O relatório DEVE identificar a aprovação fiscal das
   fontes, perguntas e evidências esperadas e a execução pela equipe técnica. (FR-020, FR-021)
@@ -443,9 +446,10 @@ como substitutos dos resultados funcionais ou como escolhas de bibliotecas e pas
 
 ### Escopo e limites
 
-- Inclui ingestão administrativa, ciclo de vida, recuperação de evidências, referências e
-  avaliação. Não inclui parecer fiscal, validação de arquivos SPED do contribuinte, memória
-  conversacional ou exposição de agentes a orquestradores.
+- Inclui ingestão administrativa com publicação automática, recuperação de evidências e
+  referências. Não inclui aprovação manual, retirada administrativa, expurgo, catálogo de perfis,
+  parecer fiscal, validação de arquivos SPED do contribuinte, memória conversacional ou exposição
+  de agentes a orquestradores (ADR 0009).
 - A primeira entrega e sua avaliação de recuperação abrangem somente manuais e guias oficiais
   em PDF com texto extraível. Schemas, outros formatos e documentos digitalizados que exigem
   reconhecimento de texto ficam para outra entrega, conforme esclarecimento D12.
@@ -456,14 +460,11 @@ como substitutos dos resultados funcionais ou como escolhas de bibliotecas e pas
   autoriza acesso cruzado a identidades, consultas ou outros dados operacionais de usuários.
 - Não se presume compatibilidade entre versões. Relações diferentes da versão solicitada
   exigem fundamento oficial registrado, conforme FR-006.
-- A disponibilização inicial exige aprovação central explícita e permite que o responsável
-  pela ingestão aprove. Reprocessamento de fonte disponível substitui automaticamente a
-  geração após sucesso; falha mantém a anterior. Retirada exclui a fonte das novas buscas,
-  preservando acesso autorizado ao conteúdo citado por referências durante a retenção.
-  Retenção de fontes retiradas e gerações substituídas segue prazo por categoria e expurgo
-  manual central após vencimento. Valores dos prazos permanecem pendentes. Conteúdo conflitante
-  sob a mesma identidade e versão é rejeitado; atualização exige outra versão oficial.
-  Este documento permanece rascunho até revisão.
+- A disponibilização é automática ao concluir texto e vetores (ADR 0009). Novo processamento
+  da mesma versão substitui a geração após sucesso; falha mantém a anterior. Nova versão da
+  fonte retira as anteriores das novas buscas, preservando o conteúdo citado por referências.
+  Não há expurgo pela API. Conteúdo conflitante sob a mesma identidade e versão é rejeitado;
+  atualização exige outra versão oficial.
 
 ### Dependências e restrições herdadas
 
@@ -490,6 +491,6 @@ numeração já existente na constitution. Decisões não resolvidas bloqueiam a
 | ID | Decisão não aprovada | Etapa de resolução |
 | --- | --- | --- |
 | D04 | Segmentação, identidade/deduplicação de trechos, embeddings, compatibilidade de representações, busca, tamanho, topK e limiar. | Plano técnico e ADR para decisões relevantes; avaliar candidatos com D12 antes de fixar parâmetros para aceitação. |
-| D07 (parcialmente resolvida) | Aprovado: base oficial compartilhada, administração central, consulta autorizada e disponibilização inicial após aprovação explícita de administrador central, que pode ser o responsável pela ingestão. Reprocessamento de fonte disponível mantém a geração ativa até substituição automática após sucesso, sem nova aprovação; falha preserva a geração anterior. Retirada exclui a fonte das novas buscas e preserva recuperação autorizada do conteúdo citado por referências anteriores durante a retenção, com indicação de retirada. Aprovado nesta rodada: prazo obrigatório por categoria de fonte retirada/geração substituída, contado da retirada/substituição; expurgo manual central somente após vencimento, sem exclusão automática. Pendentes: valores dos prazos antes de ativar a política, retenção de auditoria/consultas e matriz detalhada de permissões. | Esclarecimentos para política; plano/ADR para mecanismo de identidade e controle, antes da implementação administrativa e de persistência. |
+| D07 (resolvida em 2026-11-10, ADR 0009) | Base oficial compartilhada, administração central, consulta autorizada e disponibilização automática ao concluir o processamento. Novo processamento da mesma versão substitui a geração após sucesso; falha preserva a anterior. Nova versão retira as anteriores das novas buscas, preservando referências. Sem expurgo nem prazos efetivos de retenção. Pendente apenas: matriz detalhada de permissões para operação com JWT. | — |
 | D12 (parcialmente resolvida) | Aprovado: escopo inicial de manuais e guias oficiais em PDF com texto extraível; schemas e documentos digitalizados ficam para outra entrega. Aprovado nesta rodada: responsável fiscal seleciona e aprova fontes, perguntas e evidências esperadas; equipe técnica organiza e executa a avaliação. Pendentes: identificação dos responsáveis designados, títulos e versões oficiais específicos, exemplos, referências esperadas, métricas e critérios de aprovação. | Responsável fiscal deve selecionar fontes e expectativas antes de aprovar o conjunto; plano de avaliação deve registrar critérios antes de executar avaliações e aceitar D04. |
 | D11 | Topologia de persistência, segregação de acesso, retenção técnica e resolução durável de referências. | Plano técnico e ADR antes da implementação de persistência, respeitando propriedade dos dados e tecnologias constitucionais. |

@@ -1,5 +1,7 @@
 # Evidências — Phase 2: fundação
 
+> **Nota (2026-11-10):** relatório histórico; IdempotencyCoordinator/RevisionPreconditions foram removidos pela [ADR 0009](../adrs/0009-simplificacao-ingestao-busca.md).
+
 Data: 2026-11-05. Escopo: T007–T018. Sem implantação, corpus fiscal ou chamadas reais de embeddings.
 
 | Task | Entrega | Evidência principal |
