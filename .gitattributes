@@ -1,2 +1,21 @@
-# Scripts executados dentro de containers Linux precisam de LF.
-*.sh text eol=lf
+# Finais de linha: o repositório e as cópias de trabalho usam LF, como exige o .editorconfig.
+# Independe de core.autocrlf; mantém o dotnet format estável e o checksum das migrações SQL
+# (embutidas como recurso) igual em qualquer clone.
+* text=auto eol=lf
+
+# Scripts de Windows precisam de CRLF.
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# Binários: nunca converter.
+*.pdf binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.zip binary
+*.pfx binary
+*.p12 binary
+*.dll binary
+*.exe binary
