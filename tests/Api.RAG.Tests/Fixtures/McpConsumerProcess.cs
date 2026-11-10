@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text.Json;
+using Api.RAG.Endpoints.Contracts;
 using ModelContextProtocol.Client;
 using ModelContextProtocol.Protocol;
 
@@ -93,8 +94,29 @@ internal static class McpConsumerProcess
             });
             await using var client = await McpClient.CreateAsync(transport, cancellationToken: deadline.Token);
             var tools = await client.ListToolsAsync(cancellationToken: deadline.Token);
+            foreach (var tool in tools.Where(tool => tool.Name is "BuscarConhecimento" or "ResolverReferencia"))
+            {
+                var schema = tool.ProtocolTool;
+                if (schema.OutputSchema is not { } output || schema.InputSchema.GetProperty("additionalProperties").GetBoolean() ||
+                    output.GetProperty("additionalProperties").GetBoolean() || schema.InputSchema.GetRawText().Contains("$ref", StringComparison.Ordinal) ||
+                    output.GetRawText().Contains("$ref", StringComparison.Ordinal))
+                {
+                    throw new InvalidOperationException("Invalid fiscal tool schema");
+                }
+            }
             var result = request.ToolName is null ? null : await client.CallToolAsync(
                 request.ToolName, request.Arguments, cancellationToken: deadline.Token);
+            if (request.ToolName is "BuscarConhecimento" or "ResolverReferencia")
+            {
+                var text = result!.Content.OfType<TextContentBlock>().Single().Text;
+                var parsed = ContractValidator.ReadResult(text);
+                using var document = JsonDocument.Parse(text);
+                if (result.StructuredContent is not { } structured || !JsonElement.DeepEquals(document.RootElement, structured) ||
+                    (result.IsError == true) != (parsed.Status == "technical_failure"))
+                {
+                    throw new InvalidOperationException("Invalid fiscal tool result");
+                }
+            }
             Console.WriteLine(JsonSerializer.Serialize(new McpConsumerResult(
                 Environment.ProcessId, tools.Select(tool => tool.Name).ToArray(), result)));
             return 0;
