@@ -1,0 +1,43 @@
+# Ambiente local da Api.RAG: PostgreSQL com pgvector + pgAdmin para inspeção.
+# Uso exclusivo em desenvolvimento; credenciais vêm de infra/local/.env (ignorado pelo Git).
+name: agente-sped-rag
+
+services:
+  rag-db:
+    # Mesma imagem (digest fixo) usada pelos testes de integração.
+    image: pgvector/pgvector@sha256:ac08538c6f8b9904c33c8224c5e5706dbe760aca29db1d096972b4052c22a75d
+    environment:
+      POSTGRES_DB: rag
+      POSTGRES_USER: rag_migration
+      POSTGRES_PASSWORD: ${RAG_MIGRATION_PASSWORD:?defina RAG_MIGRATION_PASSWORD em infra/local/.env}
+      RAG_APPLICATION_PASSWORD: ${RAG_APPLICATION_PASSWORD:?defina RAG_APPLICATION_PASSWORD em infra/local/.env}
+    ports:
+      - "127.0.0.1:${RAG_DB_PORT:-5433}:5432"
+    volumes:
+      - rag-db-data:/var/lib/postgresql/data
+      - ./initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rag_migration -d rag"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  pgadmin:
+    image: dpage/pgadmin4:9.10
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@example.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:?defina PGADMIN_PASSWORD em infra/local/.env}
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+    ports:
+      - "127.0.0.1:${PGADMIN_PORT:-5050}:80"
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+      - ./pgadmin/servers.json:/pgadmin4/servers.json:ro
+    depends_on:
+      rag-db:
+        condition: service_healthy
+
+volumes:
+  rag-db-data:
+  pgadmin-data:

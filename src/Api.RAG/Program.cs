@@ -1,16 +1,19 @@
-using Api.RAG.Application.Knowledge.Concurrency;
 using Api.RAG.Application.Knowledge.Consulta;
 using Api.RAG.Application.Knowledge.Ingestao;
 using Api.RAG.Application.Knowledge.Ports;
 using Api.RAG.Controllers;
 using Api.RAG.Endpoints;
 using Api.RAG.Endpoints.Middleware;
+using Api.RAG.Endpoints.OpenApi;
 using Api.RAG.Infrastructure.Configuration;
+using Api.RAG.Infrastructure.Knowledge.Embeddings;
 using Api.RAG.Infrastructure.Knowledge.Observability;
 using Api.RAG.Infrastructure.Knowledge.Persistence;
 using Api.RAG.Infrastructure.Knowledge.Processing;
 using Api.RAG.Infrastructure.Security;
 using Api.RAG.Ingestao;
+using Api.RAG.Rag;
+using Api.RAG.Tools;
 using Microsoft.AspNetCore.Http.Timeouts;
 using Microsoft.Extensions.Options;
 using ModelContextProtocol.AspNetCore;
@@ -45,9 +48,11 @@ public sealed class Program
 
     private static void AddKnowledgeFoundation(WebApplicationBuilder builder)
     {
-        builder.Services.AddOptions<RagOptions>().Bind(builder.Configuration).ValidateOnStart();
+        builder.Services.AddOptions<RagOptions>().Bind(builder.Configuration)
+            .PostConfigure(options => options.ApplyOpenAiSection()).ValidateOnStart();
         builder.Services.AddSingleton<IValidateOptions<RagOptions>>(provider =>
-            new RagOptionsValidator(provider.GetRequiredService<IHostEnvironment>().IsEnvironment("Testing")));
+            new RagOptionsValidator(provider.GetRequiredService<IHostEnvironment>().IsEnvironment("Testing"),
+                provider.GetRequiredService<IHostEnvironment>().IsDevelopment()));
         builder.Services.AddSingleton(TimeProvider.System);
         builder.Services.AddSingleton(provider => new RagDataSource(provider.GetRequiredService<IOptions<RagOptions>>().Value,
             provider.GetRequiredService<IHostEnvironment>().IsEnvironment("Testing") &&
@@ -55,7 +60,6 @@ public sealed class Program
         builder.Services.AddSingleton<IKnowledgeUnitOfWorkFactory>(provider => provider.GetRequiredService<RagDataSource>());
         builder.Services.AddSingleton<ConsumptionRepository>();
         builder.Services.AddScoped<KnowledgeAuditReader>();
-        builder.Services.AddScoped<IdempotencyCoordinator>();
         builder.Services.AddControllers().ConfigureApplicationPartManager(manager =>
             manager.FeatureProviders.Add(new KnowledgeControllerFeatureProvider()));
         builder.Services.AddOptions<Microsoft.AspNetCore.Http.Features.FormOptions>().Configure<IOptions<RagOptions>>((options, configured) =>
@@ -75,6 +79,19 @@ public sealed class Program
         builder.Services.AddScoped<ConsultarIngestao>();
         builder.Services.AddScoped<IKnowledgeAuditAccess, KnowledgeAuditAccess>();
         builder.Services.AddHostedService<IngestionWorker>();
+        builder.Services.AddSingleton<ProcessingAdmission>();
+        builder.Services.AddHttpContextAccessor();
+        builder.Services.AddHttpClient("OpenAIEmbeddings");
+        builder.Services.AddScoped<IKnowledgeStore, KnowledgeRepository>();
+        builder.Services.AddScoped<IKnowledgeAccess, KnowledgeAccess>();
+        builder.Services.AddSingleton<IEmbeddingProvider, OpenAiEmbeddingService>();
+        builder.Services.AddScoped<IProfileEmbeddingProviderFactory, ProfileEmbeddingProviderFactory>();
+        builder.Services.AddScoped<ProcessarEmbeddings>();
+        builder.Services.AddScoped<ConsultarConhecimento>();
+        builder.Services.AddScoped<ConhecimentoService>();
+        builder.Services.AddScoped<BuscarConhecimentoTool>();
+        builder.Services.AddScoped<ResolverReferenciaTool>();
+        builder.Services.AddHostedService<EmbeddingWorker>();
         builder.Services.AddRequestTimeouts();
         builder.Services.AddOptions<RequestTimeoutOptions>().Configure<IOptions<RagOptions>>((timeouts, options) =>
         {
@@ -84,8 +101,12 @@ public sealed class Program
                 WriteTimeoutResponse = context => ProblemDetailsHandler.WriteAsync(context, 504, "OPERATION_TIMEOUT")
             };
         });
-        builder.Services.AddKnowledgeAuthorization(builder.Configuration);
+        builder.Services.AddKnowledgeAuthorization(builder.Configuration, builder.Environment.IsDevelopment());
+        if (builder.Environment.IsDevelopment())
+        {
+            builder.Services.AddKnowledgeOpenApi(!builder.Configuration.GetValue<bool>("Authentication:DisabledForDevelopment"));
+        }
         builder.Services.AddMcpServer().WithHttpTransport(options => options.SessionMode = HttpServerSessionMode.Stateless)
-            .WithListToolsHandler((_, _) => ValueTask.FromResult(new ModelContextProtocol.Protocol.ListToolsResult { Tools = [] }));
+            .WithListToolsHandler(KnowledgeMcpTools.ListAsync).WithCallToolHandler(KnowledgeMcpTools.CallAsync);
     }
 }

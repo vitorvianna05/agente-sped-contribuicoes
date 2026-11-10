@@ -1,4 +1,5 @@
 using Api.RAG.Endpoints.Middleware;
+using Api.RAG.Endpoints.OpenApi;
 using Api.RAG.Infrastructure.Configuration;
 using Api.RAG.Infrastructure.Knowledge.Observability;
 using Api.RAG.Infrastructure.Observability;
@@ -28,17 +29,23 @@ internal static class KnowledgeEndpointRegistration
         });
         app.UseMiddleware<TransportAuditMiddleware>();
         app.UseMiddleware<TransportGuardMiddleware>();
+        if (app.Environment.IsDevelopment())
+        {
+            // Swagger UI somente em Development; continua sujeito a HTTPS e AllowedHosts/AllowedOrigins.
+            app.UseKnowledgeSwaggerUi();
+        }
         app.UseAuthentication();
         app.UseAuthorization();
         app.MapControllers();
         app.MapGroup("/admin/v1").RequireAuthorization("knowledge.audit");
         app.MapMcp("/mcp").RequireAuthorization("knowledge.read");
-        app.MapGet("/.well-known/oauth-protected-resource/mcp", (IOptions<RagOptions> configured) => Results.Json(new
-        {
-            resource = configured.Value.Authentication.Resource,
-            authorization_servers = new[] { configured.Value.Authentication.Authority },
-            scopes_supported = KnowledgeAuthorization.Permissions,
-            bearer_methods_supported = BearerMethods
-        })).AllowAnonymous();
+        app.MapGet("/.well-known/oauth-protected-resource/mcp", (IOptions<RagOptions> configured) => configured.Value.Authentication.DisabledForDevelopment
+            ? (IResult)Results.NotFound() : Results.Json(new
+            {
+                resource = configured.Value.Authentication.Resource,
+                authorization_servers = new[] { configured.Value.Authentication.Authority },
+                scopes_supported = KnowledgeAuthorization.Permissions,
+                bearer_methods_supported = BearerMethods
+            })).AllowAnonymous();
     }
 }

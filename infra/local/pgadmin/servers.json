@@ -1,0 +1,13 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "Api.RAG (local)",
+      "Group": "Agente SPED",
+      "Host": "rag-db",
+      "Port": 5432,
+      "MaintenanceDB": "rag",
+      "Username": "rag_migration",
+      "SSLMode": "prefer"
+    }
+  }
+}

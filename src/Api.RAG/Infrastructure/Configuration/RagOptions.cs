@@ -11,6 +11,72 @@ internal sealed class RagOptions
     public RetrievalOptions Retrieval { get; set; } = new();
     public EmbeddingOptions Embeddings { get; set; } = new();
     public RetentionOptions Retention { get; set; } = new();
+    public OpenAiOptions OpenAI { get; set; } = new();
+
+    /// <summary>
+    /// A seção OpenAI é a origem preferencial da chave e do modelo de embeddings. Valores explícitos em
+    /// Embeddings prevalecem; divergência entre as duas seções é rejeitada pelo validador.
+    /// </summary>
+    public void ApplyOpenAiSection()
+    {
+        if (string.IsNullOrWhiteSpace(Embeddings.ApiKey) && !string.IsNullOrWhiteSpace(OpenAI.ApiKey))
+        {
+            Embeddings.ApiKey = OpenAI.ApiKey;
+        }
+        if (string.IsNullOrWhiteSpace(Embeddings.Model) && !string.IsNullOrWhiteSpace(OpenAI.EmbeddingModel))
+        {
+            Embeddings.Model = OpenAI.EmbeddingModel;
+        }
+    }
+
+    /// <summary>Etapa vetorial: valor explícito ou, se omitido, ativa somente quando há chave do provedor.</summary>
+    public bool EmbeddingStageActive => Processing.EmbeddingStageEnabled ??
+        (Embeddings.Provider != "OpenAI" || !string.IsNullOrWhiteSpace(Embeddings.ApiKey));
+}
+
+internal sealed class OpenAiOptions
+{
+    public string? ApiKey { get; set; }
+    /// <summary>Reservado à futura Api.Agente; a Api.RAG não chama modelos de chat.</summary>
+    public string? ChatModel { get; set; }
+    public string? EmbeddingModel { get; set; }
+    public OpenAiPricingOptions Pricing { get; set; } = new();
+}
+
+internal sealed class OpenAiPricingOptions
+{
+    public string? Currency { get; set; }
+    /// <summary>Origem da tabela de preços registrada no consumo.</summary>
+    public string? Reference { get; set; }
+    /// <summary>Versão da tabela; quando omitida, deriva dos próprios valores configurados.</summary>
+    public string? Version { get; set; }
+    public ChatPricingOptions Chat { get; set; } = new();
+    public EmbeddingPricingOptions Embedding { get; set; } = new();
+
+    public ConsumptionPrice? ToEmbeddingPrice()
+    {
+        if (Embedding.InputPerMillionTokens is not { } perMillion || string.IsNullOrWhiteSpace(Currency))
+        {
+            return null;
+        }
+        var version = string.IsNullOrWhiteSpace(Version)
+            ? "cfg-" + Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(
+                string.Join('|', Currency, perMillion.ToString(System.Globalization.CultureInfo.InvariantCulture)))))[..12]
+            : Version;
+        return new ConsumptionPrice(perMillion, Currency, string.IsNullOrWhiteSpace(Reference) ? "configuration:OpenAI:Pricing" : Reference, version);
+    }
+}
+
+internal sealed class ChatPricingOptions
+{
+    public decimal? InputPerMillionTokens { get; set; }
+    public decimal? CachedInputPerMillionTokens { get; set; }
+    public decimal? OutputPerMillionTokens { get; set; }
+}
+
+internal sealed class EmbeddingPricingOptions
+{
+    public decimal? InputPerMillionTokens { get; set; }
 }
 
 internal sealed class ConnectionOptions
@@ -21,6 +87,7 @@ internal sealed class ConnectionOptions
 
 internal sealed class AuthenticationOptions
 {
+    public bool DisabledForDevelopment { get; set; }
     public string? Authority { get; set; }
     public string? Audience { get; set; }
     public string? Resource { get; set; }
@@ -44,6 +111,9 @@ internal sealed class ProcessingOptions
     public int? TimeoutSeconds { get; set; }
     public int? LeaseSeconds { get; set; }
     public int? MaxPreparationAttempts { get; set; }
+    /// <summary>true/false explícito; null ativa a etapa somente quando a chave do provedor está configurada.</summary>
+    public bool? EmbeddingStageEnabled { get; set; }
+    public string? ProfileApprovalReference { get; set; }
     public ProcessingProfile[] Profiles { get; set; } = [];
 }
 
@@ -81,6 +151,7 @@ internal sealed class RetrievalOptions
 
 internal sealed class EmbeddingOptions
 {
+    public string? ApiKey { get; set; }
     public string? Provider { get; set; }
     public string? Model { get; set; }
     public int? Dimensions { get; set; }

@@ -2,17 +2,21 @@
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>Api.RAG</RootNamespace>
+    <UserSecretsId>agente-sped-contribuicoes-api-rag</UserSecretsId>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
     <PackageReference Include="ModelContextProtocol.AspNetCore" />
     <PackageReference Include="Npgsql" />
     <PackageReference Include="OpenAI" />
     <PackageReference Include="PdfPig" />
     <PackageReference Include="Pgvector" />
+    <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Infrastructure/Knowledge/Persistence/Migrations/*.sql" />
+    <EmbeddedResource Include="../../specs/001-base-fiscal-versionada/contracts/mcp-tools.schema.json" LogicalName="Api.RAG.Tools.Schema.json" />
     <Content Update="appsettings.Example.json" CopyToOutputDirectory="Never" CopyToPublishDirectory="Never" />
   </ItemGroup>
 </Project>
