@@ -1,0 +1,18 @@
+{
+  "jsonrpc": "2.0",
+  "id": "rpc-sintetico-1",
+  "method": "message/send",
+  "params": {
+    "message": {
+      "role": "user",
+      "messageId": "5f92c2ba-6870-4862-87ba-1ae8669a77f4",
+      "parts": [
+        {
+          "kind": "text",
+          "text": "{\"versaoContrato\": \"1.0\", \"idExecucao\": \"8b2f0ad6-c2e4-4a68-8bdd-20f785bc798e\", \"idSolicitacao\": \"e1b3a4cb-d729-4bd4-b796-b9c94be07b46\", \"usuario\": {\"nome\": \"Usuario Sintetico\"}, \"pergunta\": \"Realize a leitura estrutural e informe as verificacoes nao realizadas.\", \"documentos\": [{\"idDocumento\": \"doc-sintetico-1\", \"nome\": \"sintetico.txt\", \"tipo\": \"text/plain\", \"texto\": \"|0000|006|\\r\\n|9999|2|\\r\\n\"}]}"
+        }
+      ],
+      "kind": "message"
+    }
+  }
+}
