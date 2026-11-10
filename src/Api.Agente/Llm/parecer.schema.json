@@ -1,0 +1,38 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "explanation": {
+      "type": "string"
+    },
+    "interpretedInconsistencies": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "referenceIds": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "format": "uuid"
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "humanReviewRequired": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "explanation",
+    "interpretedInconsistencies",
+    "referenceIds",
+    "limitations",
+    "humanReviewRequired"
+  ]
+}
