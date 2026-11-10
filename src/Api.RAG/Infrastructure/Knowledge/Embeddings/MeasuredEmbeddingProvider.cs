@@ -25,7 +25,7 @@ internal sealed class MeasuredEmbeddingProvider(IEmbeddingProvider inner, Consum
             var id = await consumption.BeginAsync(request, clock.GetUtcNow(), cancellationToken);
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             timeout.CancelAfter(TimeSpan.FromSeconds(options.TimeoutSeconds.Value));
-            EmbeddingResponse response;
+            EmbeddingResponse? response = null;
             try
             {
                 response = await inner.GenerateAsync(request, timeout.Token);
@@ -51,7 +51,7 @@ internal sealed class MeasuredEmbeddingProvider(IEmbeddingProvider inner, Consum
             catch
             {
                 using var recording = new CancellationTokenSource(TimeSpan.FromSeconds(options.TimeoutSeconds.Value));
-                await FinishAsync(id, "failed", null, recording.Token);
+                await FinishAsync(id, "failed", response, recording.Token);
                 throw;
             }
 

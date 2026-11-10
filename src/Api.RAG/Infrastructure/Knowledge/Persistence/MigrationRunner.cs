@@ -67,6 +67,7 @@ internal static class MigrationRunner
             GRANT SELECT, INSERT, UPDATE, DELETE ON rag.operations, rag.consumption_attempts, rag.audit_entries TO {role};
             GRANT SELECT, INSERT, UPDATE, DELETE ON rag.processing_profiles, rag.sources, rag.document_versions,
                 rag.applicabilities, rag.generations, rag.chunks TO {role};
+            GRANT SELECT, INSERT, UPDATE, DELETE ON rag.retention_obligations, rag.catalog, rag.retained_artifacts, rag.reference_tombstones, rag.command_results TO {role};
             """, connection, transaction);
         await grants.ExecuteNonQueryAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);

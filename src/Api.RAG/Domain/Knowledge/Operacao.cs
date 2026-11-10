@@ -64,7 +64,7 @@ internal sealed record Operacao
     public void Validate()
     {
         if (OperationId == Guid.Empty || string.IsNullOrWhiteSpace(PrincipalId) || string.IsNullOrWhiteSpace(CorrelationId) ||
-            Type is not ("ingestion" or "approve" or "reprocess" or "withdraw" or "expurge") ||
+            Type is not ("ingestion" or "approve" or "reprocess" or "withdraw" or "expurge" or "query") ||
             State is not ("queued" or "processing" or "succeeded" or "failed" or "cancelled") ||
             CreatedAt.Offset != TimeSpan.Zero || AttemptNumber < 0 ||
             new[] { StartedAt, FinishedAt, LeaseUntil }.Any(date => date is { Offset: var offset } && offset != TimeSpan.Zero) ||
@@ -75,5 +75,17 @@ internal sealed record Operacao
         {
             throw new KnowledgeException("INVALID_STATE");
         }
+    }
+
+    public Operacao FinishWork(string? failure, DateTimeOffset at, bool cancelled = false)
+    {
+        if (State != "processing")
+        {
+            throw new KnowledgeException("INVALID_STATE");
+        }
+
+        var result = this with { State = cancelled ? "cancelled" : failure is null ? "succeeded" : "failed", FinishedAt = at, LeaseUntil = null, LeaseOwner = null, ResultCode = failure };
+        result.Validate();
+        return result;
     }
 }

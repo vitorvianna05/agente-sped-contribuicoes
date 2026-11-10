@@ -6,7 +6,7 @@ using Microsoft.Extensions.Options;
 
 namespace Api.RAG.Infrastructure.Knowledge.Processing;
 
-internal sealed partial class IngestionWorker(IServiceScopeFactory scopes, IOptions<RagOptions> options,
+internal sealed partial class IngestionWorker(IServiceScopeFactory scopes, IOptions<RagOptions> options, ProcessingAdmission admission,
     TimeProvider clock, ILogger<IngestionWorker> logger) : BackgroundService
 {
     protected override Task ExecuteAsync(CancellationToken stoppingToken) => Task.WhenAll(
@@ -23,6 +23,7 @@ internal sealed partial class IngestionWorker(IServiceScopeFactory scopes, IOpti
         {
             try
             {
+                await using var admissionLease = await admission.EnterAsync(stoppingToken);
                 using var scope = scopes.CreateScope();
                 var store = scope.ServiceProvider.GetRequiredService<IDocumentStore>();
                 var job = await store.ClaimAsync(clock.GetUtcNow(), TimeSpan.FromSeconds(options.Value.Processing.LeaseSeconds!.Value),
