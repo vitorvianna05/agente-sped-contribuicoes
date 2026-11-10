@@ -18,6 +18,12 @@ internal sealed class AgentTestHost(Uri endpoint, Action<IServiceCollection>? co
     {
         builder.UseEnvironment(environment);
         builder.UseUrls("http://127.0.0.1:0");
+        // O modo de autenticação é decidido no startup, antes de ConfigureAppConfiguration;
+        // UseSetting chega a tempo e evita depender do appsettings.Development.json local (ignorado pelo Git).
+        if (settings is not null && settings.TryGetValue("Authentication:DisabledForDevelopment", out var local))
+        {
+            builder.UseSetting("Authentication:DisabledForDevelopment", local);
+        }
         builder.ConfigureAppConfiguration((_, config) =>
         {
             config.Sources.Clear();
