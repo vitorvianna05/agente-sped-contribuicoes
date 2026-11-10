@@ -15,6 +15,7 @@ Thumbs.db
 # Credenciais e configuração sensível
 .env
 src/Api.RAG/appsettings.Development.json
+src/Api.Agente/appsettings.Development.json
 .env.*
 !.env.example
 .aws/

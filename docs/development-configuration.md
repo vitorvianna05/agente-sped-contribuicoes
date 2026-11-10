@@ -42,6 +42,34 @@ startup lista as chaves ausentes/inválidas sem imprimir segredos (`OptionsValid
 Sem efeito desde a ADR 0009: `Processing:ProfileApprovalReference`, a seção `Evaluation` e os
 campos `AdoptionState`/`EvaluationId` do perfil (este último só tem o formato validado).
 
+## Api.Agente junto com a Api.RAG
+
+```powershell
+./scripts/local/setup-agente.ps1                 # depois do setup-rag.ps1
+dotnet user-secrets set Llm:ApiKey <chave> --project src/Api.Agente
+dotnet run --project src/Api.Agente --launch-profile Api.Agente   # https://localhost:60996/swagger
+```
+
+`setup-agente.ps1` (pode ser repetido) cria no mesmo container o banco `agente` com os papéis
+`agente_migration` (proprietário) e `agente_application`, acrescenta as senhas a
+`infra/local/.env`, grava `AgentData:ConnectionString`/`MigrationConnectionString` nos User
+Secrets da Api.Agente, copia `appsettings.Development.Example.json` se o arquivo local não
+existir (ignorado pelo Git) e aplica `--migrate-agent`.
+
+O exemplo Development da Api.Agente traz, apenas para desenvolvimento:
+
+- `AgentData`: política `local-dev-v1` / `LOCAL-DEV-NOT-APPROVED`, auditoria e consumo de 30 dias.
+- `LayoutPolicy`: perfil **provisório** COD_VER `006`, 2020-01-01 a 2026-12-31 →
+  `EFD-Contribuicoes` / `1.35`, igual à aplicabilidade do Guia Prático na RAG. Os códigos e
+  períodos cobertos pelo guia 1.35 ainda precisam de decisão fiscal; trocar quando definidos.
+- `Limits:TimeoutSeconds` 120: a análise faz busca, até 5 resoluções MCP e até 2 tentativas do LLM.
+
+A Api.Agente chama a RAG em `https://localhost:60994/mcp` sem token (loopback local). Isso exige
+que o certificado servido pelo Kestrel seja confiável: se houver mais de um certificado de
+desenvolvimento, o Kestrel usa o mais novo, que pode não ser o confiável, e a análise falha com
+`KNOWLEDGE_UNAVAILABLE` sem que a RAG registre requisição. Correção (altera a confiança do sistema):
+`dotnet dev-certs https --clean` e depois `dotnet dev-certs https --trust`.
+
 ## Ambiente Docker (PostgreSQL + pgAdmin)
 
 `infra/local/docker-compose.yml` sobe PostgreSQL com pgvector (mesma imagem dos testes, porta
