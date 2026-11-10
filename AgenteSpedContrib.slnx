@@ -1,8 +1,15 @@
 <Solution>
+  <Folder Name="/Itens de Solução/">
+    <File Path="docs/architecture.md" />
+    <File Path="docs/reference-api-conhecimento.md" />
+    <File Path="docs/requirements.md" />
+  </Folder>
   <Folder Name="/src/">
     <Project Path="src/Api.RAG/Api.RAG.csproj" />
+    <Project Path="src/Api.Agente/Api.Agente.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Api.RAG.Tests/Api.RAG.Tests.csproj" />
+    <Project Path="tests/Api.Agente.Tests/Api.Agente.Tests.csproj" />
   </Folder>
 </Solution>

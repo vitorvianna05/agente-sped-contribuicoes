@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>Api.Agente</RootNamespace>
+    <UserSecretsId>agente-sped-contribuicoes-api-agente</UserSecretsId>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" />
+    <PackageReference Include="ModelContextProtocol" />
+    <PackageReference Include="OpenAI" />
+    <PackageReference Include="Npgsql" />
+    <InternalsVisibleTo Include="Api.Agente.Tests" />
+    <EmbeddedResource Include="Infrastructure/Persistence/Migrations/*.sql" />
+    <EmbeddedResource Include="Llm/Prompts/parecer-v1.txt" LogicalName="Api.Agente.Parecer.Prompt.v1" />
+    <EmbeddedResource Include="Llm/parecer.schema.json" LogicalName="Api.Agente.Parecer.Schema.v1" />
+    <EmbeddedResource Include="Mcp/Contracts/knowledge-v1.schema.json" LogicalName="Api.Agente.Knowledge.Schema.json" />
+  </ItemGroup>
+</Project>
