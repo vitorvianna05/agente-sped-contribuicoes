@@ -1,0 +1,3 @@
+interface:
+  display_name: "GitHub Versionamento"
+  short_description: "Revisar, testar, registrar commits e publicar no GitHub com SDD."
