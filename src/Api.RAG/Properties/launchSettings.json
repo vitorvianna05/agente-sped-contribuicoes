@@ -1,0 +1,13 @@
+{
+  "profiles": {
+    "Api.RAG": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "launchUrl": "swagger",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:60994;http://localhost:60995"
+    }
+  }
+}

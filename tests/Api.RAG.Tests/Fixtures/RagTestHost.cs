@@ -21,6 +21,7 @@ internal sealed class RagTestHost(string? connectionString = null) : WebApplicat
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
+        builder.UseUrls("http://127.0.0.1:0");
         builder.ConfigureAppConfiguration((_, configuration) =>
         {
             configuration.Sources.Clear();
@@ -28,7 +29,8 @@ internal sealed class RagTestHost(string? connectionString = null) : WebApplicat
             configuration.AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["ConnectionStrings:Rag"] = connectionString,
-                ["ConnectionStrings:RagMigration"] = null
+                ["ConnectionStrings:RagMigration"] = null,
+                ["Processing:EmbeddingStageEnabled"] = "false"
             });
         });
         builder.ConfigureTestServices(services =>

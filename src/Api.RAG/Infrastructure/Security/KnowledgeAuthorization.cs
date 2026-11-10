@@ -9,52 +9,62 @@ internal static class KnowledgeAuthorization
     public static readonly string[] Permissions = ["knowledge.read", "knowledge.ingest", "knowledge.publish",
         "knowledge.reprocess", "knowledge.withdraw", "knowledge.expurge", "knowledge.audit"];
 
-    public static IServiceCollection AddKnowledgeAuthorization(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddKnowledgeAuthorization(this IServiceCollection services, IConfiguration configuration, bool allowDevelopment = false)
     {
-        services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(options =>
+        var localAuthentication = allowDevelopment && configuration.GetValue<bool>("Authentication:DisabledForDevelopment");
+        if (localAuthentication)
         {
-            options.MapInboundClaims = false;
-            options.IncludeErrorDetails = false;
-        });
-        services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
-            .Configure<Microsoft.Extensions.Options.IOptions<RagOptions>>((jwt, configured) =>
+            services.AddAuthentication(DevelopmentAuthenticationHandler.SchemeName)
+                .AddScheme<Microsoft.AspNetCore.Authentication.AuthenticationSchemeOptions, DevelopmentAuthenticationHandler>(
+                    DevelopmentAuthenticationHandler.SchemeName, _ => { });
+        }
+        else
+        {
+            services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(options =>
             {
-                var auth = configured.Value.Authentication;
-                jwt.Authority = auth.Authority;
-                jwt.Audience = auth.Audience;
-                jwt.RequireHttpsMetadata = true;
-                jwt.TokenValidationParameters = new TokenValidationParameters
-                {
-                    ValidateIssuerSigningKey = true,
-                    ValidateIssuer = true,
-                    ValidIssuer = auth.Authority,
-                    ValidateAudience = true,
-                    ValidAudience = auth.Audience,
-                    ValidateLifetime = true,
-                    RequireExpirationTime = true,
-                    RequireSignedTokens = true,
-                    ClockSkew = TimeSpan.Zero,
-                    NameClaimType = "sub"
-                };
-                jwt.Events = new JwtBearerEvents
-                {
-                    OnTokenValidated = context =>
-                    {
-                        if (context.Principal is null || AuthenticatedActor.TryFrom(context.Principal) is null)
-                        {
-                            context.Fail("Subject required.");
-                        }
-
-                        return Task.CompletedTask;
-                    },
-                    OnChallenge = context =>
-                    {
-                        context.Response.Headers.WWWAuthenticate =
-                            $"Bearer resource_metadata=\"{new Uri(new Uri(auth.Resource!), "/.well-known/oauth-protected-resource/mcp").AbsoluteUri}\"";
-                        return Task.CompletedTask;
-                    }
-                };
+                options.MapInboundClaims = false;
+                options.IncludeErrorDetails = false;
             });
+            services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
+                .Configure<Microsoft.Extensions.Options.IOptions<RagOptions>>((jwt, configured) =>
+                {
+                    var auth = configured.Value.Authentication;
+                    jwt.Authority = auth.Authority;
+                    jwt.Audience = auth.Audience;
+                    jwt.RequireHttpsMetadata = true;
+                    jwt.TokenValidationParameters = new TokenValidationParameters
+                    {
+                        ValidateIssuerSigningKey = true,
+                        ValidateIssuer = true,
+                        ValidIssuer = auth.Authority,
+                        ValidateAudience = true,
+                        ValidAudience = auth.Audience,
+                        ValidateLifetime = true,
+                        RequireExpirationTime = true,
+                        RequireSignedTokens = true,
+                        ClockSkew = TimeSpan.Zero,
+                        NameClaimType = "sub"
+                    };
+                    jwt.Events = new JwtBearerEvents
+                    {
+                        OnTokenValidated = context =>
+                        {
+                            if (context.Principal is null || AuthenticatedActor.TryFrom(context.Principal) is null)
+                            {
+                                context.Fail("Subject required.");
+                            }
+
+                            return Task.CompletedTask;
+                        },
+                        OnChallenge = context =>
+                        {
+                            context.Response.Headers.WWWAuthenticate =
+                                $"Bearer resource_metadata=\"{new Uri(new Uri(auth.Resource!), "/.well-known/oauth-protected-resource/mcp").AbsoluteUri}\"";
+                            return Task.CompletedTask;
+                        }
+                    };
+                });
+        }
         services.AddAuthorizationBuilder();
         foreach (var permission in Permissions)
         {
@@ -69,7 +79,8 @@ internal static class KnowledgeAuthorization
                         return false;
                     }
 
-                    if (permission == "knowledge.read")
+                    if (permission == "knowledge.read" || (localAuthentication &&
+                        context.User.Identity?.AuthenticationType == DevelopmentAuthenticationHandler.SchemeName))
                     {
                         return true;
                     }
