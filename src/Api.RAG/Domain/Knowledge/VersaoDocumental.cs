@@ -22,6 +22,44 @@ internal sealed record VersaoDocumental(Guid DocumentVersionId, Guid SourceId, s
 
     public void AssertSameContent(ContentHash hash) => AssertSameContent(OriginalContentHash, hash);
 
+    /// <summary>
+    /// Publicação automática: a geração concluída passa a ser a ativa da versão (primeira publicação ou substituição
+    /// após reprocessamento). Aprovação manual não existe; ApprovedBy registra quem enviou a primeira geração publicada.
+    /// </summary>
+    public VersaoDocumental PublishGeneration(GeracaoProcessamento generation, string actor, DateTimeOffset at)
+    {
+        if (PublicationState == "purged" || generation.DocumentVersionId != DocumentVersionId || generation.State != "succeeded" ||
+            generation.ContentManifestHash is null || generation.SupersededAt is not null)
+        {
+            throw new KnowledgeException("INVALID_STATE");
+        }
+
+        var result = this with
+        {
+            PublicationState = "published",
+            ActiveGenerationId = generation.GenerationId,
+            ApprovedBy = ApprovedBy ?? actor,
+            ApprovedAt = ApprovedAt ?? at,
+            WithdrawnAt = null,
+            Revision = Guid.NewGuid()
+        };
+        result.Validate();
+        return result;
+    }
+
+    /// <summary>Retira a versão da busca (substituída por outra versão oficial da mesma fonte).</summary>
+    public VersaoDocumental Withdraw(DateTimeOffset at)
+    {
+        if (PublicationState is not ("unpublished" or "published"))
+        {
+            throw new KnowledgeException("INVALID_STATE");
+        }
+
+        var result = this with { PublicationState = "withdrawn", WithdrawnAt = at, ActiveGenerationId = null, Revision = Guid.NewGuid() };
+        result.Validate();
+        return result;
+    }
+
     public static void AssertSameContent(ContentHash originalHash, ContentHash hash)
     {
         if (hash != originalHash)

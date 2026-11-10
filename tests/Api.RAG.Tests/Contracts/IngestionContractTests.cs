@@ -41,7 +41,7 @@ public sealed class IngestionContractTests(FoundationDatabase database) : IClass
         return client;
     }
 
-    internal static async Task<HttpResponseMessage> Upload(HttpClient client, IngestionMetadata metadata, byte[] pdf, string key,
+    internal static async Task<HttpResponseMessage> Upload(HttpClient client, IngestionMetadata metadata, byte[] pdf,
         string mime = "application/pdf", string? overrideJson = null)
     {
         using var body = new MultipartFormDataContent();
@@ -50,20 +50,18 @@ public sealed class IngestionContractTests(FoundationDatabase database) : IClass
         body.Add(file, "arquivo", "synthetic.pdf");
         body.Add(new StringContent(overrideJson ?? JsonSerializer.Serialize(metadata, IngestionMetadata.JsonOptions), Encoding.UTF8), "metadata");
         using var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/ingest") { Content = body };
-        request.Headers.Add("Idempotency-Key", key);
         return await client.SendAsync(request, TestContext.Current.CancellationToken);
     }
 
-    /// <summary>202 não publica; worker preserva original, trecho, localização e replay concorrente.</summary>
+    /// <summary>Sem Idempotency-Key: envios concorrentes do mesmo documento convergem para uma operação; sem vetores, não publica.</summary>
     [Fact, Trait("Category", "Integration")]
-    public async Task UploadIsDurableIdempotentAndRemainsUnpublished()
+    public async Task ConcurrentUploadsConvergeAndTextOnlyRemainsUnpublished()
     {
         await using var host = new RagTestHost(database.Options.ConnectionStrings.Rag);
         using var client = Client(host);
         var metadata = Metadata();
         var pdf = SyntheticPdfFactory.Create("First synthetic evidence", "Second synthetic evidence");
-        var key = Guid.NewGuid().ToString();
-        var responses = await Task.WhenAll(Enumerable.Range(0, 4).Select(_ => Upload(client, metadata, pdf, key)));
+        var responses = await Task.WhenAll(Enumerable.Range(0, 4).Select(_ => Upload(client, metadata, pdf)));
         try
         {
             Assert.All(responses, response => Assert.Equal(HttpStatusCode.Accepted, response.StatusCode));
@@ -92,7 +90,6 @@ public sealed class IngestionContractTests(FoundationDatabase database) : IClass
             Assert.Equal("unpublished", version.GetProperty("publicationState").GetString());
             Assert.Equal(JsonValueKind.Null, version.GetProperty("activeGenerationId").ValueKind);
             Assert.False(version.TryGetProperty("original", out _));
-            Assert.NotNull(versionResponse.Headers.ETag);
             var generationId = operation.GetProperty("generationId").GetGuid();
             await using var connection = await database.Source.OpenAsync(TestContext.Current.CancellationToken);
             await using var command = new NpgsqlCommand("SELECT d.original,c.location,c.source_spans FROM rag.document_versions d JOIN rag.generations g USING(document_version_id) JOIN rag.chunks c USING(generation_id) WHERE g.generation_id=@id ORDER BY c.ordinal", connection);
@@ -108,14 +105,18 @@ public sealed class IngestionContractTests(FoundationDatabase database) : IClass
                 Assert.Equal(count, locationJson.RootElement.GetProperty("physicalPages")[0].GetInt32());
             }
             Assert.Equal(2, count);
-            using var duplicate = await Upload(client, metadata, pdf, Guid.NewGuid().ToString());
+            using var duplicate = await Upload(client, metadata, pdf);
             Assert.Equal(HttpStatusCode.Accepted, duplicate.StatusCode);
             using var duplicateJson = JsonDocument.Parse(await duplicate.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
             Assert.Equal(generationId, duplicateJson.RootElement.GetProperty("operation").GetProperty("generationId").GetGuid());
-            using var different = await Upload(client, metadata, SyntheticPdfFactory.Create("Other synthetic bytes"), Guid.NewGuid().ToString());
+            Assert.Equal(operation.GetProperty("operationId").GetGuid(), duplicateJson.RootElement.GetProperty("operation").GetProperty("operationId").GetGuid());
+            using var different = await Upload(client, metadata, SyntheticPdfFactory.Create("Other synthetic bytes"));
             Assert.Equal(HttpStatusCode.Conflict, different.StatusCode);
-            using var reusedKey = await Upload(client, metadata with { OfficialVersion = "other" }, pdf, key);
-            Assert.Equal(HttpStatusCode.Conflict, reusedKey.StatusCode);
+            // Reenvios não deixam operações órfãs: só a operação original existe para a versão.
+            await using var countConnection = await database.Source.OpenAsync(TestContext.Current.CancellationToken);
+            await using var operations = new NpgsqlCommand("SELECT count(*) FROM rag.operations WHERE document_version_id=@id", countConnection);
+            operations.Parameters.AddWithValue("id", versionId);
+            Assert.Equal(1L, await operations.ExecuteScalarAsync(TestContext.Current.CancellationToken));
         }
         finally
         {
@@ -135,7 +136,7 @@ public sealed class IngestionContractTests(FoundationDatabase database) : IClass
     {
         await using var host = new RagTestHost(database.Options.ConnectionStrings.Rag);
         using var client = Client(host, subject, scope);
-        using var response = await Upload(client, Metadata(), SyntheticPdfFactory.Create("Synthetic text"), Guid.NewGuid().ToString());
+        using var response = await Upload(client, Metadata(), SyntheticPdfFactory.Create("Synthetic text"));
         Assert.Equal(expected, (int)response.StatusCode);
     }
 
@@ -162,7 +163,7 @@ public sealed class IngestionContractTests(FoundationDatabase database) : IClass
             metadata = metadata with { Applicabilities = [] };
         }
         var json = scenario == "extra" ? JsonSerializer.Serialize(metadata, IngestionMetadata.JsonOptions).TrimEnd('}') + ",\"usuario\":\"spoof\"}" : null;
-        using var response = await Upload(client, metadata, bytes, Guid.NewGuid().ToString(), scenario == "mime" ? "text/plain" : "application/pdf", json);
+        using var response = await Upload(client, metadata, bytes, scenario == "mime" ? "text/plain" : "application/pdf", json);
         Assert.Equal(expected, (int)response.StatusCode);
         using var error = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
         Assert.Equal("1.0", error.RootElement.GetProperty("contractVersion").GetString());
@@ -176,7 +177,7 @@ public sealed class IngestionContractTests(FoundationDatabase database) : IClass
         using var client = Client(host, scopes: "knowledge.ingest");
         host.Services.GetRequiredService<IOptions<RagOptions>>().Value.Retention.OriginalDays = null;
         var metadata = Metadata();
-        using var denied = await Upload(client, metadata, SyntheticPdfFactory.Create("Synthetic policy test"), Guid.NewGuid().ToString());
+        using var denied = await Upload(client, metadata, SyntheticPdfFactory.Create("Synthetic policy test"));
         Assert.Equal(HttpStatusCode.Conflict, denied.StatusCode);
         using var error = JsonDocument.Parse(await denied.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
         Assert.Equal("RETENTION_NOT_CONFIGURED", error.RootElement.GetProperty("code").GetString());
@@ -199,7 +200,7 @@ public sealed class IngestionContractTests(FoundationDatabase database) : IClass
             services.AddSingleton<IPdfTextExtractor, TechnicalFailureExtractor>();
         }));
         using var client = Client(host, application: application);
-        using var upload = await Upload(client, Metadata(), SyntheticPdfFactory.Create("Synthetic technical failure"), Guid.NewGuid().ToString());
+        using var upload = await Upload(client, Metadata(), SyntheticPdfFactory.Create("Synthetic technical failure"));
         Assert.Equal(HttpStatusCode.Accepted, upload.StatusCode);
         using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(15));
         JsonElement operation;

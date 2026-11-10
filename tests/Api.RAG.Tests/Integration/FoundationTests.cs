@@ -4,7 +4,6 @@ using System.Net.Http.Headers;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
-using Api.RAG.Application.Knowledge.Concurrency;
 using Api.RAG.Application.Knowledge.Ports;
 using Api.RAG.Domain.Knowledge;
 using Api.RAG.Domain.Knowledge.Values;
@@ -24,7 +23,7 @@ using Npgsql;
 namespace Api.RAG.Tests.Integration;
 
 /// <summary>Aceite integrado T011–T018 em PostgreSQL e HTTP/MCP isolados.</summary>
-public sealed class FoundationTests(FoundationDatabase database) : IClassFixture<FoundationDatabase>
+public sealed partial class FoundationTests(FoundationDatabase database) : IClassFixture<FoundationDatabase>
 {
     /// <summary>Idempotência concorrente, isolamento de principal e rollback de auditoria.</summary>
     [Fact]
@@ -32,15 +31,14 @@ public sealed class FoundationTests(FoundationDatabase database) : IClassFixture
     public async Task ConcurrentRegistrationIsAtomicAndScopedToPrincipal()
     {
         var operation = NewOperation();
-        var coordinator = new IdempotencyCoordinator(database.Source, database.Clock);
-        var results = await Task.WhenAll(Enumerable.Range(0, 8).Select(_ => coordinator.RegisterAsync(
+        var results = await Task.WhenAll(Enumerable.Range(0, 8).Select(_ => RegisterAsync(
             operation with { OperationId = Guid.NewGuid() }, TestContext.Current.CancellationToken)));
         Assert.Single(results, result => result.Created);
         Assert.Single(results.Select(result => result.Operation.OperationId).Distinct());
-        var conflict = await Assert.ThrowsAsync<KnowledgeException>(() => coordinator.RegisterAsync(
+        var conflict = await Assert.ThrowsAsync<KnowledgeException>(() => RegisterAsync(
             operation with { RequestDigest = ContentHash.Compute("other-payload"u8) }, TestContext.Current.CancellationToken));
         Assert.Equal("IDEMPOTENCY_CONFLICT", conflict.Code);
-        var other = await coordinator.RegisterAsync(operation with { PrincipalId = "another-principal", OperationId = Guid.NewGuid() }, TestContext.Current.CancellationToken);
+        var other = await RegisterAsync(operation with { PrincipalId = "another-principal", OperationId = Guid.NewGuid() }, TestContext.Current.CancellationToken);
         Assert.True(other.Created);
         Assert.Equal(1L, await ScalarAsync("SELECT count(*) FROM rag.audit_entries WHERE object_id=@id", results[0].Operation.OperationId));
 
@@ -109,7 +107,7 @@ public sealed class FoundationTests(FoundationDatabase database) : IClassFixture
     public async Task ConsumptionRecordsRetriesNullsPricesAndCancellation()
     {
         var operation = NewOperation();
-        await new IdempotencyCoordinator(database.Source, database.Clock).RegisterAsync(operation, TestContext.Current.CancellationToken);
+        await RegisterAsync(operation, TestContext.Current.CancellationToken);
         var request = new EmbeddingRequest(operation.OperationId, operation.CorrelationId, "never-store-this-text", "Fake", "synthetic-vector-v1", 3);
         var repository = new ConsumptionRepository(database.Source);
         var fake = new ScriptedEmbeddingProvider();
@@ -144,7 +142,7 @@ public sealed class FoundationTests(FoundationDatabase database) : IClassFixture
     public async Task TimeoutAndIncompleteConsumptionRemainExplicit()
     {
         var operation = NewOperation();
-        await new IdempotencyCoordinator(database.Source, database.Clock).RegisterAsync(operation, TestContext.Current.CancellationToken);
+        await RegisterAsync(operation, TestContext.Current.CancellationToken);
         var request = new EmbeddingRequest(operation.OperationId, operation.CorrelationId, "synthetic", "Fake", "synthetic-vector-v1", 3);
         var options = new EmbeddingOptions
         {
@@ -206,7 +204,7 @@ public sealed class FoundationTests(FoundationDatabase database) : IClassFixture
         var readerToken = Token(host, "reader", "knowledge.read");
         var endpoint = new Uri(client.BaseAddress!, "/mcp");
         var result = await McpConsumerProcess.ExecuteAsync(new McpConsumerRequest(endpoint, null, null, readerToken), TestContext.Current.CancellationToken);
-        Assert.Empty(result.Tools);
+        Assert.Equal(2, result.Tools.Length);
         Assert.NotEqual(Environment.ProcessId, result.ProcessId);
 
         using var scope = host.Services.CreateScope();
@@ -247,13 +245,28 @@ public sealed class FoundationTests(FoundationDatabase database) : IClassFixture
         RequestDigest = ContentHash.Compute(Encoding.UTF8.GetBytes("synthetic-payload"))
     };
 
+    /// <summary>Registra a operação e sua auditoria na mesma transação.</summary>
+    private async Task<(Operacao Operation, bool Created)> RegisterAsync(Operacao operation, CancellationToken token)
+    {
+        await using var unit = await database.Source.BeginAsync(token);
+        var result = await unit.Operations.RegisterAsync(operation, token);
+        if (result.Created)
+        {
+            await unit.Audit.WriteAsync(new AuditEntry(Guid.NewGuid(), operation.PrincipalId, null, operation.Type,
+                operation.OperationId, "accepted", database.Clock.GetUtcNow(), operation.CorrelationId), token);
+        }
+
+        await unit.CommitAsync(token);
+        return result;
+    }
+
     /// <summary>A constraint impede cronologia inválida mesmo em escrita direta no banco.</summary>
     [Fact]
     [Trait("Category", "Integration")]
     public async Task DatabaseRejectsFinishBeforeCreationWithoutStart()
     {
         var operation = NewOperation();
-        await new IdempotencyCoordinator(database.Source, database.Clock).RegisterAsync(operation, TestContext.Current.CancellationToken);
+        await RegisterAsync(operation, TestContext.Current.CancellationToken);
         await using var connection = await database.Source.OpenAsync(TestContext.Current.CancellationToken);
         await using var command = new NpgsqlCommand("""
             UPDATE rag.operations SET state='cancelled',finished_at=created_at - interval '1 second'
@@ -273,7 +286,7 @@ public sealed class FoundationTests(FoundationDatabase database) : IClassFixture
     public async Task ConsumptionPersistsIndependentCurrencies(string? reportedCurrency)
     {
         var operation = NewOperation();
-        await new IdempotencyCoordinator(database.Source, database.Clock).RegisterAsync(operation, TestContext.Current.CancellationToken);
+        await RegisterAsync(operation, TestContext.Current.CancellationToken);
         var request = new EmbeddingRequest(operation.OperationId, operation.CorrelationId, "synthetic", "Fake", "synthetic-vector-v1", 3);
         var provider = new MeasuredEmbeddingProvider(new FixedEmbeddingProvider(reportedCurrency, 0.5m),
             new ConsumptionRepository(database.Source), database.Clock, database.Options.Embeddings,

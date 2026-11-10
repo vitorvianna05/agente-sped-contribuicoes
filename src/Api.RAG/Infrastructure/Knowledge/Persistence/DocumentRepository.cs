@@ -129,7 +129,15 @@ internal sealed class DocumentRepository(RagDataSource source) : IDocumentStore
             }
         }
         Guid? reusedOperation = null;
-        await using (var generation = Command("SELECT generation_id,operation_id FROM rag.generations WHERE document_version_id=@id AND profile_id=@profile ORDER BY created_at,generation_id LIMIT 1"))
+        // Reenvio do mesmo documento reaproveita a geração mais recente concluída ou em andamento;
+        // se só houver gerações com falha, ou com texto pronto mas sem trechos (ex.: trechos apagados
+        // manualmente), uma nova geração é criada e o processamento é refeito.
+        await using (var generation = Command("""
+            SELECT g.generation_id,g.operation_id FROM rag.generations g
+            WHERE g.document_version_id=@id AND g.profile_id=@profile AND g.state<>'failed'
+              AND (g.preparation_state<>'ready' OR EXISTS (SELECT 1 FROM rag.chunks c WHERE c.generation_id=g.generation_id))
+            ORDER BY (g.state='succeeded') DESC,g.created_at DESC,g.generation_id LIMIT 1
+            """))
         {
             generation.Parameters.AddWithValue("id", versionId);
             generation.Parameters.AddWithValue("profile", submission.Profile.ProfileId);
@@ -155,17 +163,25 @@ internal sealed class DocumentRepository(RagDataSource source) : IDocumentStore
             generation.Parameters.AddWithValue("at", operation.CreatedAt);
             await generation.ExecuteNonQueryAsync(cancellationToken);
         }
-        await using (var update = Command("UPDATE rag.operations SET document_version_id=@document,generation_id=@generation WHERE operation_id=@id"))
+        // Reaproveitamento descarta a operação recém-registrada: não fica operação órfã em "queued".
+        await using (var update = Command(reusedOperation is null
+            ? "UPDATE rag.operations SET document_version_id=@document,generation_id=@generation WHERE operation_id=@id"
+            : "DELETE FROM rag.operations WHERE operation_id=@id"))
         {
             update.Parameters.AddWithValue("id", operation.OperationId);
             update.Parameters.AddWithValue("document", versionId);
             update.Parameters.AddWithValue("generation", generationId);
             await update.ExecuteNonQueryAsync(cancellationToken);
         }
+        if (reusedOperation is not null)
+        {
+            // Geração já concluída mas fora da busca (ex.: processada antes da publicação automática): publica agora.
+            await KnowledgePublication.PublishCompletedIfPendingAsync(connection, transaction, generationId, operation.PrincipalId, operation.CreatedAt, cancellationToken);
+        }
         await new KnowledgeAuditWriter(connection, transaction).WriteAsync(new AuditEntry(Guid.NewGuid(), operation.PrincipalId,
             submission.OrganizationId, "ingestion", versionId, reusedOperation is null ? "accepted" : "reused", operation.CreatedAt, operation.CorrelationId), cancellationToken);
         await transaction.CommitAsync(cancellationToken);
-        return await GetOperationAsync(operation.OperationId, cancellationToken);
+        return await GetOperationAsync(reusedOperation ?? operation.OperationId, cancellationToken);
 
         NpgsqlCommand Command(string sql) => new(sql, connection, transaction);
     }

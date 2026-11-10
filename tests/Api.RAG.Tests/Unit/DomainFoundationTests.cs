@@ -1,6 +1,5 @@
 using Api.RAG.Domain.Knowledge;
 using Api.RAG.Domain.Knowledge.Values;
-using Api.RAG.Endpoints.Contracts;
 using Api.RAG.Infrastructure.Configuration;
 using Microsoft.Extensions.Configuration;
 
@@ -47,19 +46,7 @@ public sealed class DomainFoundationTests
         Assert.Equal("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad", ContentHash.Compute("abc"u8).Value);
     }
 
-    /// <summary>If-Match exige exatamente a revisão forte atual.</summary>
-    [Fact]
-    [Trait("Category", "Unit")]
-    public void PreconditionsDistinguishMissingFromStaleRevision()
-    {
-        var revision = Guid.NewGuid();
-        Assert.Equal("PRECONDITION_REQUIRED", Assert.Throws<KnowledgeException>(() => RevisionPreconditions.Require(null, revision)).Code);
-        Assert.Equal("REVISION_MISMATCH", Assert.Throws<KnowledgeException>(() => RevisionPreconditions.Require("*", revision)).Code);
-        Assert.Equal("REVISION_MISMATCH", Assert.Throws<KnowledgeException>(() => RevisionPreconditions.Require("W/" + RevisionPreconditions.ToETag(revision), revision)).Code);
-        RevisionPreconditions.Require(RevisionPreconditions.ToETag(revision), revision);
-    }
-
-    /// <summary>Política sintética habilita apenas o ambiente de testes; perfil candidato não habilita busca.</summary>
+    /// <summary>Política sintética habilita apenas o ambiente de testes; busca usa o perfil configurado compatível.</summary>
     [Fact]
     [Trait("Category", "Unit")]
     public void SyntheticPolicyDoesNotApproveOperationalUse()
@@ -69,11 +56,11 @@ public sealed class DomainFoundationTests
         options.ConnectionStrings.Rag = "Host=localhost;Database=synthetic;Username=app";
         Assert.True(new RagOptionsValidator(allowSynthetic: true).Validate(null, options).Succeeded);
         Assert.True(new RagOptionsValidator().Validate(null, options).Failed);
-        Assert.Throws<KnowledgeException>(() => RagOptionsValidator.RequireExpurge(options));
-        RagOptionsValidator.RequireExpurge(options, synthetic: true);
         RagOptionsValidator.RequirePersistence(options, synthetic: true);
         Assert.Equal("RETENTION_NOT_CONFIGURED", Assert.Throws<KnowledgeException>(() => RagOptionsValidator.RequirePersistence(options, synthetic: false)).Code);
-        Assert.Equal("PROFILE_INCOMPATIBLE", Assert.Throws<KnowledgeException>(() => RagOptionsValidator.RequireOperationalProfile(options)).Code);
+        Assert.Equal(Guid.Parse(options.Processing.Profiles[0].Id), RagOptionsValidator.OperationalProfile(options).ProfileId);
+        options.Retrieval.AdoptedProfileId = Guid.NewGuid().ToString();
+        Assert.Equal("PROFILE_INCOMPATIBLE", Assert.Throws<KnowledgeException>(() => RagOptionsValidator.OperationalProfile(options)).Code);
         options.Retention.QueryDays = null;
         Assert.Throws<KnowledgeException>(() => RagOptionsValidator.RequirePersistence(options, synthetic: true));
         options.Embeddings.SdkAutomaticRetriesEnabled = true;

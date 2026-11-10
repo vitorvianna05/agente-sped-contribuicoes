@@ -103,9 +103,9 @@ public sealed class IngestionJourneyTests(FoundationDatabase database) : IClassF
         Assert.Equal("PROFILE_INCOMPATIBLE", (await Assert.ThrowsAsync<KnowledgeException>(() => repository.SubmitAsync(changedProfile, Cancellation))).Code);
     }
 
-    /// <summary>Interrupções repetidas têm limite durável e nova chave preserva a operação canônica completa.</summary>
+    /// <summary>Interrupções repetidas têm limite durável; reenvio após a falha cria nova geração e refaz o processamento.</summary>
     [Fact, Trait("Category", "Integration")]
-    public async Task ExhaustionIsDurableAndReingestionHasCanonicalChronology()
+    public async Task ExhaustionIsDurableAndResubmissionRetriesWithNewGeneration()
     {
         var repository = new DocumentRepository(database.Source);
         var submission = Submission(SyntheticPdfFactory.Create("Synthetic interruption test"));
@@ -130,14 +130,24 @@ public sealed class IngestionJourneyTests(FoundationDatabase database) : IClassF
                 IdempotencyKeyDigest = ContentHash.Compute("new-key-after-failure"u8)
             }
         };
-        var reused = await repository.SubmitAsync(duplicate, Cancellation);
-        Assert.Equal(failed, reused);
-        Assert.True(reused.CreatedAt <= reused.StartedAt);
-        Assert.True(reused.StartedAt <= reused.FinishedAt);
-        Assert.Equal(failed, await repository.GetOperationAsync(duplicate.Operation.OperationId, Cancellation));
-        await using var connection = await database.Source.OpenAsync(Cancellation);
-        await using var command = new NpgsqlCommand("SELECT attempt_number FROM rag.operations WHERE operation_id=@id", connection);
-        command.Parameters.AddWithValue("id", original.OperationId);
-        Assert.Equal(2, await command.ExecuteScalarAsync(Cancellation));
+        var retried = await repository.SubmitAsync(duplicate, Cancellation);
+        Assert.Equal(duplicate.Operation.OperationId, retried.OperationId);
+        Assert.Equal(original.DocumentVersionId, retried.DocumentVersionId);
+        Assert.NotEqual(original.GenerationId, retried.GenerationId);
+        Assert.Equal("queued", retried.State);
+        Assert.Equal(failed, await repository.GetOperationAsync(original.OperationId, Cancellation));
+        await using (var connection = await database.Source.OpenAsync(Cancellation))
+        {
+            await using var command = new NpgsqlCommand("SELECT attempt_number FROM rag.operations WHERE operation_id=@id", connection);
+            command.Parameters.AddWithValue("id", original.OperationId);
+            Assert.Equal(2, await command.ExecuteScalarAsync(Cancellation));
+        }
+
+        // A nova geração é processada normalmente (e não fica pendente na fila compartilhada).
+        var job = Assert.IsType<PreparationJob>(await repository.ClaimAsync(now.AddSeconds(201), TimeSpan.FromSeconds(60), 2, Cancellation));
+        Assert.Equal(retried.GenerationId, job.GenerationId);
+        await new ProcessarGeracao(repository, new PdfTextExtractor(Options.Create(database.Options)), new TokenWindowSegmenter(),
+            new ControlledTimeProvider(now.AddSeconds(202))).ExecuteAsync(job, Cancellation);
+        Assert.Equal("ready", (await repository.GetOperationAsync(retried.OperationId, Cancellation)).PreparationState);
     }
 }
