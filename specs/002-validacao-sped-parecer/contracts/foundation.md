@@ -41,6 +41,9 @@ sistema; falta de contexto é erro antes da rede. Só chama BuscarConhecimento c
 argumentos do contrato. ResolveAsync só chama ResolverReferencia e confere o UUID retornado.
 MCP não recebe principal ou configuração no corpo. Configuração fixa destino e bearer de
 serviço; não há query funcional REST nem credencial de banco RAG.
+A query é montada por `KnowledgeQuery.Build` a partir das regras executadas, no vocabulário do
+guia (títulos de registros/seções, leiaute e período); códigos internos de regra e conteúdo do
+arquivo não são enviados (feature 001, ADR 0011).
 
 ConhecimentoClientException possui códigos sanitizados: KNOWLEDGE_CONTEXT_REQUIRED,
 KNOWLEDGE_REFERENCE_INVALID, CORRELATION_INVALID, KNOWLEDGE_SCHEMA_INCOMPATIBLE,

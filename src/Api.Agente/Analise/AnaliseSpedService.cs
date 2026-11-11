@@ -32,9 +32,7 @@ internal sealed class AnaliseSpedService(ISpedParser parser, SpedValidator valid
             else
             {
                 // Contexto montado pelo sistema, sem nomes/CNPJ/arquivo completo ou instruções do upload.
-                var query = $"EFD Contribuicoes leiaute {validation.DeclaredLayoutCode}; periodo {validation.PeriodFrom:yyyy-MM-dd} a {validation.PeriodThrough:yyyy-MM-dd}; " +
-                    "Fundamente as verificacoes estruturais de abertura, encerramento e quantidade de linhas. " +
-                    string.Join(' ', validation.Checks.Select(check => check.RuleId + ":" + check.State));
+                var query = KnowledgeQuery.Build(validation);
                 var retrieved = await CallKnowledge("BuscarConhecimento", () => knowledge.SearchAsync(query, validation.DocumentType!, validation.KnowledgeLayoutVersion!, identity.CorrelationId, token));
                 if (retrieved.Status is "invalid_context" or "reference_unavailable") { throw new AnalysisException("KNOWLEDGE_CONTEXT_INVALID"); }
                 if (retrieved.Status == "technical_failure") { throw new AnalysisException("KNOWLEDGE_REMOTE_FAILURE"); }
