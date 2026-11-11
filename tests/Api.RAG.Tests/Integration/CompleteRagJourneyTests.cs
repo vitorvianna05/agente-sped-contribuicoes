@@ -21,7 +21,7 @@ public sealed class CompleteRagJourneyTests(FoundationDatabase database) : IClas
     private const string Scopes = "knowledge.ingest knowledge.audit knowledge.read";
     private static CancellationToken Token => TestContext.Current.CancellationToken;
 
-    private static WebApplicationFactory<Program> Application(RagTestHost host, CountingProvider provider, bool embeddingsEnabled = true)
+    internal static WebApplicationFactory<Program> Application(RagTestHost host, IEmbeddingProvider provider, bool embeddingsEnabled = true)
     {
         var application = host.WithWebHostBuilder(builder => builder.ConfigureTestServices(services =>
         {
@@ -41,7 +41,7 @@ public sealed class CompleteRagJourneyTests(FoundationDatabase database) : IClas
         return json.RootElement.Clone();
     }
 
-    private static async Task<JsonElement> WaitAsync(HttpClient client, Uri location, string expected = "succeeded")
+    internal static async Task<JsonElement> WaitAsync(HttpClient client, Uri location, string expected = "succeeded")
     {
         using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(25));
         while (true)
@@ -79,7 +79,7 @@ public sealed class CompleteRagJourneyTests(FoundationDatabase database) : IClas
         }
     }
 
-    private static async Task<KnowledgeResult> CallAsync(HttpClient client, string tool, Dictionary<string, object?> arguments)
+    internal static async Task<KnowledgeResult> CallAsync(HttpClient client, string tool, Dictionary<string, object?> arguments)
     {
         var result = await McpConsumerProcess.ExecuteAsync(new McpConsumerRequest(new Uri(client.BaseAddress!, "/mcp"), tool, arguments,
             client.DefaultRequestHeaders.Authorization!.Parameter), Token);

@@ -152,7 +152,7 @@ P01 deixou de bloquear (sem exclusão) e P02 não condiciona a busca. T084 perma
 - [X] T046 [US3] Implementar classificação de limitação/contexto e evidência parcial conforme perfil avaliado, sem usar distância como suficiência fiscal; sem regra avaliada, declarar cobertura não aferida e impedir adoção de parâmetros em produção. Arquivos: `src/Api.RAG/Application/Knowledge/Ports/IKnowledgeStore.cs`, `src/Api.RAG/Application/Knowledge/Consulta/ConsultarConhecimento.cs`, `src/Api.RAG/Rag/ConhecimentoService.cs`, `src/Api.RAG/Endpoints/Contracts/ContractValidator.cs`. Depende de: T044, T045. Rastreio: FR-005, FR-007, FR-020.
 - [X] T047 [US3] Implementar execução resiliente de consulta/provider/banco com limites externos, cancelamento e retries auditados; mapear falhas a technical_failure/isError, erros de protocolo separados e nenhuma substituição silenciosa por REST ou outra versão. Arquivos: `src/Api.RAG/Application/Knowledge/Consulta/ConsultarConhecimento.cs`, `src/Api.RAG/Infrastructure/Knowledge/Embeddings/MeasuredEmbeddingProvider.cs`, `src/Api.RAG/Infrastructure/Configuration/RagOptionsValidator.cs`. Depende de: T046. Rastreio: FR-008, FR-017–018.
 - [X] T048 [US3] Testar e fechar rotas de alteração de política por texto malicioso de PDF/chunk, corpos com identidade e configuração arbitrária; manter conteúdo como dado e garantir segredos fora de logs e referências fabricadas fora dos resultados. Arquivos: `tests/Api.RAG.Tests/Contracts/TransportEnvelopeTests.cs`, `tests/Api.RAG.Tests/Contracts/IngestionContractTests.cs`, `tests/Api.RAG.Tests/Integration/CompleteRagJourneyTests.cs`, `src/Api.RAG/Tools/KnowledgeMcpTools.cs`, `src/Api.RAG/Application/Knowledge/Ingestao/IngestionMetadata.cs`. Depende de: T047. Rastreio: FR-019; SC-008.
-- [ ] T049 [US3] Executar jornadas de ausência/parcial/falha/cancelamento e validar todas as categorias e contagem de tentativas; comprovar nenhuma declaração de conformidade e registrar evidência da classificação de resultados. Arquivos: `tests/Api.RAG.Tests/Integration/KnowledgeLimitationsJourneyTests.cs`, `specs/001-base-fiscal-versionada/validation/us3.md`. Depende de: T048, T045. Rastreio: SC-004, SC-008.
+- [X] T049 [US3] Executar jornadas de ausência/parcial/falha/cancelamento e validar todas as categorias e contagem de tentativas; comprovar nenhuma declaração de conformidade e registrar evidência da classificação de resultados. Arquivos: `tests/Api.RAG.Tests/Integration/KnowledgeLimitationsJourneyTests.cs`, `specs/001-base-fiscal-versionada/validation/us3.md`. Depende de: T048, T045. Rastreio: SC-004, SC-008.
 
 **Checkpoint**: validar US3 com os testes e registrar resultado antes de marcá-la concluída.
 
@@ -372,7 +372,7 @@ lote, manter os arquivos isolados e integrar os resultados antes das tarefas dep
 ## Notes
 
 - Total: **87 tarefas** — Setup 6, Fundação 12, US1 16, US2 9, US3 6, US4 16, US5 14, Fechamento 8 (T085/T086 acrescentadas em 2026-11-10; T087 em 2026-11-11).
-- Estado atual: 60 concluídas, 22 abertas e 5 canceladas (T051, T052, T063, T071, T075). Tasks *Supersedidas* continuam concluídas como histórico; o comportamento vigente está na ADR 0009. Não transformar obtenção de aprovação em aprovação presumida.
+- Estado atual: 61 concluídas, 21 abertas e 5 canceladas (T051, T052, T063, T071, T075). Tasks *Supersedidas* continuam concluídas como histórico; o comportamento vigente está na ADR 0009. Não transformar obtenção de aprovação em aprovação presumida.
 - Quantidades/limiares não fornecidos permanecem externos e avaliáveis, nunca defaults aprovados.
 - Scripts/comandos efetivamente adotados devem ser atualizados no quickstart durante implementação.
 - P01–P04 podem bloquear tarefas específicas e aceite; não alegar feature concluída com elas abertas.
@@ -425,3 +425,10 @@ T087 concluída. ADR 0011: busca híbrida (migração 0010), perfil de desenvolv
 (`repeated-lines-v1`, `record-sections`) e consulta da Api.Agente no vocabulário do guia.
 Conjunto técnico de 15 consultas sobre o Guia 1.35: hit@5 57% → 93%, MRR 0,332 → 0,844.
 Evidência: Api.RAG 100 testes, Api.Agente 130 testes. T069/T077 continuam pendentes.
+
+## Histórico — limitações ponta a ponta (2026-11-11)
+
+T049 concluída: KnowledgeLimitationsJourneyTests cobre todas as categorias do contrato 1.0,
+falha, timeout e cancelamento com contagem de tentativas e auditoria
+([evidência](validation/us3.md)). T044/T045 seguem abertas. A Api.RAG real também passou a ser
+servida a outro processo (`--rag-server`) para o AG013 da feature 002. Suíte: 103 testes.
