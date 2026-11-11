@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Api.Agente.Analise;
 using Api.Agente.Contracts;
+using Api.Agente.Llm;
 using Microsoft.Extensions.Options;
 using Npgsql;
 using NpgsqlTypes;
@@ -71,17 +72,22 @@ internal sealed class PostgresAnalysisLedger(IOptions<AgentDataOptions> configur
         if (await command.ExecuteNonQueryAsync(token) != 1) { throw new AnalysisException("EXECUTION_NOT_AVAILABLE"); }
         return id;
     }
-    public async Task FinishAttemptAsync(Guid attemptId, string state, LlmResponse? usage, CancellationToken token)
+    public async Task FinishAttemptAsync(Guid attemptId, string state, LlmResponse? usage, LlmCost? cost, CancellationToken token)
     {
-        if (usage?.InputTokens is < 0 || usage?.OutputTokens is < 0) { throw new AnalysisException("USAGE_INVALID"); }
+        if (usage?.InputTokens is < 0 || usage?.OutputTokens is < 0 || usage?.CachedInputTokens is < 0 || cost?.Amount < 0)
+        { throw new AnalysisException("USAGE_INVALID"); }
         await using var connection = await OpenAsync(token);
         await using var command = new NpgsqlCommand("""
-            UPDATE agente.consumption_attempts SET state=@state,finished_at=@at,input_tokens=@input,output_tokens=@output
+            UPDATE agente.consumption_attempts SET state=@state,finished_at=@at,input_tokens=@input,output_tokens=@output,
+            cached_input_tokens=@cached,estimated_cost=@cost,estimated_currency=@currency,price_reference=@reference,price_version=@version
             WHERE attempt_id=@id AND state='pending'
             """, connection);
         command.Parameters.AddWithValue("id", attemptId); command.Parameters.AddWithValue("state", state);
         command.Parameters.AddWithValue("at", clock.GetUtcNow());
         Add(command, "input", NpgsqlDbType.Bigint, usage?.InputTokens); Add(command, "output", NpgsqlDbType.Bigint, usage?.OutputTokens);
+        Add(command, "cached", NpgsqlDbType.Bigint, usage?.CachedInputTokens); Add(command, "cost", NpgsqlDbType.Numeric, cost?.Amount);
+        Add(command, "currency", NpgsqlDbType.Text, cost?.Currency); Add(command, "reference", NpgsqlDbType.Text, cost?.Reference);
+        Add(command, "version", NpgsqlDbType.Text, cost?.Version);
         if (await command.ExecuteNonQueryAsync(token) != 1) { throw new AnalysisException("ATTEMPT_NOT_AVAILABLE"); }
     }
     public async Task CompleteAsync(ExecutionIdentity identity, string state, string? code, CancellationToken token)
@@ -101,7 +107,7 @@ internal sealed class PostgresAnalysisLedger(IOptions<AgentDataOptions> configur
         await using var connection = await OpenAsync(token);
         await using var command = new NpgsqlCommand("""
             SELECT a.attempt_id,a.state,a.model,a.prompt_version,a.started_at,a.finished_at,a.input_tokens,a.output_tokens,
-            a.estimated_cost,a.estimated_currency,a.provider_reported_cost,a.currency,a.price_reference,a.price_version
+            a.estimated_cost,a.estimated_currency,a.provider_reported_cost,a.currency,a.price_reference,a.price_version,a.cached_input_tokens
             FROM agente.executions e LEFT JOIN agente.consumption_attempts a ON a.execution_id=e.execution_id AND a.expires_at>@at
             WHERE e.execution_id=@id AND e.principal_id=@principal AND e.organization_id IS NOT DISTINCT FROM @organization
               AND e.expires_at>@at ORDER BY a.started_at,a.attempt_id
@@ -119,7 +125,8 @@ internal sealed class PostgresAnalysisLedger(IOptions<AgentDataOptions> configur
                     reader.IsDBNull(5) ? null : reader.GetFieldValue<DateTimeOffset>(5), reader.IsDBNull(6) ? null : reader.GetInt64(6),
                     reader.IsDBNull(7) ? null : reader.GetInt64(7), reader.IsDBNull(8) ? null : reader.GetDecimal(8), reader.IsDBNull(9) ? null : reader.GetString(9),
                     reader.IsDBNull(10) ? null : reader.GetDecimal(10), reader.IsDBNull(11) ? null : reader.GetString(11),
-                    reader.IsDBNull(12) ? null : reader.GetString(12), reader.IsDBNull(13) ? null : reader.GetString(13)));
+                    reader.IsDBNull(12) ? null : reader.GetString(12), reader.IsDBNull(13) ? null : reader.GetString(13),
+                    reader.IsDBNull(14) ? null : reader.GetInt64(14)));
             }
         } while (await reader.ReadAsync(token));
         return attempts.ToArray();

@@ -29,7 +29,8 @@ internal sealed class MeasuredParecerLlm(IParecerLlm provider, IAnalysisLedger l
             catch (Exception exception) when (exception is not OutOfMemoryException) { failure = exception; }
             using var recording = new CancellationTokenSource(TimeSpan.FromSeconds(options.TimeoutSeconds));
             // Falha ao salvar mantém intenção pending e impede nova tentativa automática.
-            await ledger.FinishAttemptAsync(id, token.IsCancellationRequested ? "cancelled" : failure is OperationCanceledException ? "timeout" : failure is null ? "succeeded" : "failed", response, recording.Token);
+            await ledger.FinishAttemptAsync(id, token.IsCancellationRequested ? "cancelled" : failure is OperationCanceledException ? "timeout" : failure is null ? "succeeded" : "failed",
+                response, options.Pricing.ToPrice()?.Estimate(response), recording.Token);
             token.ThrowIfCancellationRequested();
             if (failure is null) { return draft!; }
             var retry = failure is OperationCanceledException or AnalysisException { Code: "PARECER_INVALID" } ||

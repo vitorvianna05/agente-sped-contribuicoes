@@ -22,7 +22,7 @@ public sealed class OpenAiParecerTests
         var provider = new OpenAiParecerLlm(Options.Create(options), new Factory(handler));
         var result = await provider.GenerateAsync(context, TestContext.Current.CancellationToken);
         Assert.Equal("succeeded", result.State);
-        Assert.Equal(12L, result.InputTokens); Assert.Equal(7L, result.OutputTokens);
+        Assert.Equal(12L, result.InputTokens); Assert.Equal(7L, result.OutputTokens); Assert.Equal(4L, result.CachedInputTokens);
         using var json = JsonDocument.Parse(handler.Body!);
         Assert.Equal("json_schema", json.RootElement.GetProperty("response_format").GetProperty("type").GetString());
         Assert.True(json.RootElement.GetProperty("response_format").GetProperty("json_schema").GetProperty("strict").GetBoolean());
@@ -50,7 +50,7 @@ public sealed class OpenAiParecerTests
         using var handler = new Handler(HttpStatusCode.OK, AnalysisFixtures.Draft(ParecerValidationTests.Context), usage);
         var options = AnalysisFixtures.Llm; options.ApiKey = "synthetic";
         var result = await new OpenAiParecerLlm(Options.Create(options), new Factory(handler)).GenerateAsync(ParecerValidationTests.Context, TestContext.Current.CancellationToken);
-        Assert.Null(result.InputTokens); Assert.Null(result.OutputTokens);
+        Assert.Null(result.InputTokens); Assert.Null(result.OutputTokens); Assert.Null(result.CachedInputTokens);
     }
 
     /// <summary>Recusa e truncamento são distintos e preservam tokens reportados.</summary>
@@ -83,7 +83,7 @@ public sealed class OpenAiParecerTests
                 created = 0,
                 model = "synthetic-model",
                 choices = new[] { new { index = 0, message = new { role = "assistant", content = draft }, finish_reason = "stop" } },
-                usage = new { prompt_tokens = 12, completion_tokens = 7, total_tokens = 19 }
+                usage = new { prompt_tokens = 12, completion_tokens = 7, total_tokens = 19, prompt_tokens_details = new { cached_tokens = 4 } }
             }) : """{"error":{"message":"synthetic","type":"rate_limit_error","code":"rate_limit_exceeded"}}""";
             if (status == HttpStatusCode.OK && usage != "known")
             {

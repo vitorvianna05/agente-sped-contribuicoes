@@ -92,7 +92,7 @@ serão fornecidos/configurados pelo usuário. Não se cadastram perfis ou polít
 | AG001 | Fonte do manual e resposta do usuário registradas. Pendente catálogo/aplicabilidade/aprovação fiscal e política real. |
 | AG005/006 | Parser/envelope/contagem/datas, período 2020–2026, mapeamento externo inequívoco, testes negativos e unsupported implementados. Pendente validação integral de campos/blocos/regras e corpus oficial aprovado. |
 | AG009/010 | JSON/schema/prompt v1, SDK OpenAI real com HTTP simulado nos testes, citações resolvidas, pendências preservadas, recusa/incompleto/retries finitos. Avaliação oficial não presumida. |
-| AG011 | Intenção antes da tentativa, uso conhecido inclusive falhas, PostgreSQL próprio/migração/papéis segregados, consulta isolada e expurgo por lotes implementados/testados. Pendente política/conexão reais e operação aprovada. Preço/faturamento ausentes ficam NULL; cálculo tarifário depende de tabela aprovada e não está implementado. |
+| AG011 | Intenção antes da tentativa, uso conhecido inclusive falhas, PostgreSQL próprio/migração/papéis segregados, consulta isolada e expurgo por lotes implementados/testados. Pendente política/conexão reais e operação aprovada. Custo estimado por `Llm:Pricing` com tokens em cache (ADR 0004); sem tabela ou uso, NULL; faturamento do provedor NULL. |
 | AG012 | AnaliseSpedService + POST /api/v1/analises + GET consumo implementados para cobertura estrutural parcial. Depende de AG001/006/011 para aceite integral; não retorna conformidade nem completed. |
 | AG013 | Jornada REST/Kestrel → SDK MCP em outro processo → LLM sintético → PostgreSQL próprio passou, incluindo falhas/negativos/isolamento. Pendente ensaio com versão final da Api.RAG e matriz T049; não equivale a aprovação entre as APIs reais. |
 | AG014 | Pendente corpus/rubrica/revisores, chamada real autorizada/avaliada, custo/latência e aceite fiscal/produção. |
@@ -109,3 +109,10 @@ dois POSTs, esquema JWT baseado na autenticação ativa, health anônimo e docum
 permissões/estados/pendências. Perfil de execução existente já abre /swagger. Sem mudanças
 na Api.RAG ou no contrato funcional de upload. Suíte atual: 129 aprovados, zero falhas/ignorados;
 quatro testes novos em SwaggerTests. [Evidência](validation/swagger.md).
+
+## Incremento — custo estimado do parecer (2026-11-11)
+
+Parte de AG011. ADR 0004: tabela `Llm:Pricing` (input, cache, output, moeda, referência e versão),
+tokens em cache lidos do provedor, migração `0002_llm_cached_tokens` e custo estimado gravado por
+tentativa. Sem tabela, custo NULL. Execução real local: US$ 0,001306 por análise com 98% do input em
+cache. Suíte atual: 138 aprovados, zero falhas/ignorados. AG011 segue aberta por política/conexão reais.

@@ -63,6 +63,14 @@ O exemplo Development da Api.Agente traz, apenas para desenvolvimento:
   `EFD-Contribuicoes` / `1.35`, igual à aplicabilidade do Guia Prático na RAG. Os códigos e
   períodos cobertos pelo guia 1.35 ainda precisam de decisão fiscal; trocar quando definidos.
 - `Limits:TimeoutSeconds` 120: a análise faz busca, até 5 resoluções MCP e até 2 tentativas do LLM.
+- `Llm:Pricing`: tabela pública do gpt-4.1-mini (US$ 0,40 input / 0,10 cache / 1,60 output por
+  milhão). Cada tentativa grava o custo estimado; `GET /api/v1/analises/{id}/consumo` mostra
+  tokens (inclusive em cache), custo, referência e versão da tabela (ADR 0004 da feature 002).
+  Sem preços, o custo fica nulo. Arquivo local anterior a essa seção: copiar o bloco do exemplo.
+
+Depois de atualizar o código, reaplicar as migrações da Api.Agente
+(`dotnet run --project src/Api.Agente -- --migrate-agent` ou `setup-agente.ps1`); sem isso a
+tentativa não é finalizada e a análise termina `failed`.
 
 A Api.Agente chama a RAG em `https://localhost:60994/mcp` sem token (loopback local). Isso exige
 que o certificado servido pelo Kestrel seja confiável: se houver mais de um certificado de

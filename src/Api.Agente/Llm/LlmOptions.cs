@@ -10,4 +10,5 @@ internal sealed class LlmOptions
     public int MaxOutputTokens { get; set; }
     public int MaxContextCharacters { get; set; }
     public int MaxOutputCharacters { get; set; }
+    public LlmPricingOptions Pricing { get; set; } = new();
 }

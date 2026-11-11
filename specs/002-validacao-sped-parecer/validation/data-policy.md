@@ -20,7 +20,8 @@ conexão localmente”. Nenhum prazo, aprovador, referência real ou conexão fo
   administrativo separado. Exige política preenchida; não foi agendado nem rodado em banco real.
 - A versão/configuração posterior não estende ou reduz silenciosamente as datas gravadas.
   Mudanças retroativas, suspensão legal e retenção de resultados exigem desenho/aprovação próprios.
-- Uso/preço/faturamento desconhecido fica NULL. A configuração não possui preços presumidos;
+- Uso/preço/faturamento desconhecido fica NULL. Custo estimado só com `Llm:Pricing` configurada
+  (ADR 0004; exemplo de produção sem preços, exemplo Development com a tabela pública);
   relatório não afirma custo zero. Os testes usam prazos e aprovação expressamente sintéticos.
 
 Ainda necessário: prazos/referência/responsáveis reais; definição da política para envio do

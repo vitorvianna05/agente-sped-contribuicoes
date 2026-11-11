@@ -135,8 +135,9 @@ impede repetição/publicação, mantém pending para reconciliação e não pre
 Schema agente tem execução e tentativas com política/expiração capturadas. Consulta por
 subject + organization_id; migração e expurgo explícitos usam papel administrativo distinto,
 sem DDL/DELETE no host. Expurgo em lote não remove retenção vigente nem pai com filhos.
-Não persiste arquivo, prompt, evidência textual ou parecer. Cálculo tarifário permanece
-incremento dependente de tabela de preços; campos de estimativa/faturamento são nulos.
+Não persiste arquivo, prompt, evidência textual ou parecer. Custo estimado por tabela
+configurada `Llm:Pricing` (input, cache, output; ADR 0004); sem tabela, nulo. Custo informado
+pelo provedor permanece nulo.
 
 Suite com REST/Kestrel, processo MCP sintético separado e PostgreSQL próprio descartável.
 SDK OpenAI testado com HTTP simulado/Structured Outputs/uso ausente. Sem chamada faturável,

@@ -56,7 +56,8 @@ Mesma autorização; consulta somente execução do subject + organization_id au
 Outro proprietário, organização ou execução expirada/inexistente recebe 404, sem revelar
 existência. Retorna contractVersion, executionId, correlationId da consulta, attempts,
 attemptCount, unknownCostAttempts e byModel. Tentativas incluem estado, modelo/prompt,
-início/fim/duração, tokens e campos separados de custo/moeda estimados/informados.
+início/fim/duração, tokens (input, cachedInputTokens, output) e campos separados de custo/moeda
+estimados/informados, com priceReference/priceVersion da tabela usada.
 byModel soma apenas tokens conhecidos, expõe unknownUsageAttempts e mantém total conhecido
 nulo se nenhum contador foi informado. Não soma moedas nem afirma custo zero. Não inclui
 arquivo, prompt, parecer ou credencial. Sem tentativas, retorna lista vazia.
@@ -67,8 +68,9 @@ Timeout, MaxAttempts, delay e limites do contexto/saída são externos e finitos
 explícito somente para timeout, saída JSON inválida e HTTP 408/429/5xx; recusa/incompleto
 não são repetidos automaticamente. SDK não repete internamente. Cancelamento registra
 estado com token independente; encerramento abrupto pode manter pending, nunca sucesso falso.
-Preço ou faturamento não informado permanece NULL; cálculo tarifário é incremento dependente
-de tabela/versionamento aprovados. Não agrega o consumo de embeddings da Api.RAG.
+Custo estimado = tabela `Llm:Pricing` × tokens conhecidos (cache com preço próprio; ADR 0004).
+Sem tabela, com uso desconhecido ou incoerente permanece NULL; faturamento do provedor também.
+Não agrega o consumo de embeddings da Api.RAG.
 
 PolicyVersion/ApprovalReference e prazos não têm defaults de aprovação. Arquivo/resultados
 são transitórios. Schema agente e migração/expurgo são exclusivamente da Api.Agente.

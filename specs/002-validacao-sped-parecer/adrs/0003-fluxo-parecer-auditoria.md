@@ -48,7 +48,8 @@ da aprovação e configurará localmente a conexão PostgreSQL própria.
   repita o ID local; falha sem resposta válida não inventa ID. Não se guardam arquivo, prompt,
   texto das evidências ou parecer no banco.
   Custos estimados e informados têm campos/moedas separados e ficam NULL sem informação de
-  preço/provedor. Não há tabela de preços presumida nem total monetário fictício. Embeddings
+  preço/provedor. Não há tabela de preços presumida nem total monetário fictício (tabela
+  configurável `Llm:Pricing` acrescentada pela ADR 0004). Embeddings
   continuam sendo medidos exclusivamente pela RAG; a correlação não copia seu consumo.
 - AgentData requer conexão, PolicyVersion, ApprovalReference e prazos positivos para iniciar
   análise. Os prazos de auditoria devem cobrir os de consumo, pois preservam a identidade e

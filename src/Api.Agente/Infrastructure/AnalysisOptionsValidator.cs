@@ -10,7 +10,9 @@ internal sealed class AnalysisOptionsValidator : IValidateOptions<LlmOptions>, I
     public ValidateOptionsResult Validate(string? name, LlmOptions value) =>
         !string.IsNullOrWhiteSpace(value.Model) && value.TimeoutSeconds > 0 && value.MaxAttempts > 0 &&
         value.RetryDelayMilliseconds >= 0 && value.MaxOutputTokens > 0 && value.MaxContextCharacters > 0 && value.MaxOutputCharacters > 0
-            ? ValidateOptionsResult.Success : ValidateOptionsResult.Fail("Llm exige modelo e limites finitos de timeout/tentativas/contexto/saida.");
+            ? value.Pricing is not null && value.Pricing.IsValid ? ValidateOptionsResult.Success
+                : ValidateOptionsResult.Fail("Llm:Pricing exige Currency, InputPerMillionTokens e OutputPerMillionTokens nao negativos quando houver preco.")
+            : ValidateOptionsResult.Fail("Llm exige modelo e limites finitos de timeout/tentativas/contexto/saida.");
 
     public ValidateOptionsResult Validate(string? name, AgentDataOptions value) => value.TimeoutSeconds > 0 && value.RetentionBatchSize > 0 &&
         value.AuditDays is not <= 0 && value.ConsumptionDays is not <= 0 &&

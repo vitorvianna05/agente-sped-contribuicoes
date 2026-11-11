@@ -61,11 +61,22 @@ internal sealed class MemoryAnalysisLedger : IAnalysisLedger
     {
         token.ThrowIfCancellationRequested(); KnowledgeCalls.Add((identity.ExecutionId, trace)); return Task.CompletedTask;
     }
-    public Task FinishAttemptAsync(Guid attemptId, string state, LlmResponse? usage, CancellationToken token)
+    public Task FinishAttemptAsync(Guid attemptId, string state, LlmResponse? usage, LlmCost? cost, CancellationToken token)
     {
         token.ThrowIfCancellationRequested();
         if (FailFinish) { throw new AnalysisException("AUDIT_UNAVAILABLE"); }
-        Attempts[attemptId] = Attempts[attemptId] with { State = state, FinishedAt = DateTimeOffset.UtcNow, InputTokens = usage?.InputTokens, OutputTokens = usage?.OutputTokens };
+        Attempts[attemptId] = Attempts[attemptId] with
+        {
+            State = state,
+            FinishedAt = DateTimeOffset.UtcNow,
+            InputTokens = usage?.InputTokens,
+            OutputTokens = usage?.OutputTokens,
+            CachedInputTokens = usage?.CachedInputTokens,
+            EstimatedCost = cost?.Amount,
+            EstimatedCurrency = cost?.Currency,
+            PriceReference = cost?.Reference,
+            PriceVersion = cost?.Version
+        };
         return Task.CompletedTask;
     }
     public Task CompleteAsync(ExecutionIdentity identity, string state, string? code, CancellationToken token)

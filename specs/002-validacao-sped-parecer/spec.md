@@ -165,7 +165,8 @@ mapeamento inequívoco parametrizado, busca/resolução MCP, OpenAI/Structured O
 de JSON/citações/pendências. AG009/010 implementadas. Ledger próprio mede tentativas, inclusive
 falhas/retries e uso ausente nulo; consulta é isolada e expurgo administrativo é limitado.
 Arquivo, prompt e parecer não são persistidos. Custos estimados/informados são separados;
-preço ausente continua nulo, sem cálculo tarifário presumido.
+o estimado vem de `Llm:Pricing` configurada (ADR 0004); preço ausente continua nulo, sem
+cálculo tarifário presumido.
 
 O exemplo real não contém perfis nem política aprovados. Sem política/conexão, análise falha
 antes de dependências faturáveis; sem perfil, retorna unsupported. Com contexto sintético

@@ -37,9 +37,11 @@ internal sealed class OpenAiParecerLlm(IOptions<LlmOptions> configured, IHttpCli
         var usage = raw.RootElement.TryGetProperty("usage", out var reported) && reported.ValueKind == JsonValueKind.Object ? reported : default;
         var state = !string.IsNullOrEmpty(completion.Refusal) ? "refused" : completion.FinishReason == ChatFinishReason.Stop ? "succeeded" : "incomplete";
         var text = completion.Content.Count == 1 ? completion.Content[0].Text : null;
-        return new LlmResponse(text, Tokens("prompt_tokens"), Tokens("completion_tokens"), state);
+        var details = usage.ValueKind == JsonValueKind.Object && usage.TryGetProperty("prompt_tokens_details", out var nested) &&
+            nested.ValueKind == JsonValueKind.Object ? nested : default;
+        return new LlmResponse(text, Tokens(usage, "prompt_tokens"), Tokens(usage, "completion_tokens"), state, Tokens(details, "cached_tokens"));
 
-        long? Tokens(string name) => usage.ValueKind == JsonValueKind.Object && usage.TryGetProperty(name, out var value) &&
+        static long? Tokens(JsonElement parent, string name) => parent.ValueKind == JsonValueKind.Object && parent.TryGetProperty(name, out var value) &&
             value.ValueKind == JsonValueKind.Number && value.TryGetInt64(out var count) && count >= 0 ? count : null;
     }
 

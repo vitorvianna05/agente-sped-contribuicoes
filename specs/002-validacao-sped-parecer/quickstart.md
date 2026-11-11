@@ -123,8 +123,9 @@ humanReviewRequired=true, com todas as verificações fiscais não realizadas. H
 continuam analysisAvailable=false: não são readiness de aceite fiscal/operação real.
 
 GET /api/v1/analises/{executionId}/consumo exige mesmo subject/organization_id da execução.
-Retorna tentativas/modelo/tokens conhecidos, duração e lacunas; custos desconhecidos ficam
-nulos. Não há cálculo monetário sem tabela de preços aprovada nem dupla contagem da RAG.
+Retorna tentativas/modelo/tokens conhecidos (inclusive em cache), duração e lacunas; o custo
+estimado usa `Llm:Pricing` (ADR 0004) e fica nulo sem tabela ou sem uso informado. Não há dupla
+contagem da RAG.
 Não se guardam arquivo, prompt, trechos ou parecer no PostgreSQL.
 
 Última evidência: [interoperability.md](validation/interoperability.md). As respostas do usuário
