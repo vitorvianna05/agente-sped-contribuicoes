@@ -15,7 +15,7 @@ Dependências abaixo são obrigatórias para aceite integral. Núcleo parametriz
 - [X] AG010 Implementar IParecerLlm/OpenAiParecerLlm com gpt-4.1-mini registrado na decisão mais recente (ADR 0010 da Feature 001), configurável e sujeito a AG014, e prompt versionado com resultados determinísticos + evidências; validar saída estrita e citações antes de publicar. Arquivos: `src/Api.Agente/Analise/AnalysisPorts.cs`, `src/Api.Agente/Llm/OpenAiParecerLlm.cs`, `src/Api.Agente/Contracts/ParecerValidator.cs`, `src/Api.Agente/Llm/Prompts/parecer-v1.txt`. Depende: AG009, AG008. Rastreio: FR-AG-005/006.
 - [ ] AG011 Implementar consumo/auditoria por tentativa e políticas de persistência da Api.Agente, com moedas estimada/informada separadas; correlacionar MCP sem duplicar consumo de embeddings da Api.RAG. Arquivos: `src/Api.Agente/Infrastructure/Consumption/MeasuredParecerLlm.cs`, `tests/Api.Agente.Tests/Integration/ConsumptionTests.cs`. Depende: AG010, AG001. Rastreio: FR-AG-007/009; SC-AG-004.
 - [ ] AG012 Coordenar AnaliseSpedService reutilizável por REST técnico e pelo futuro adaptador A2A SOFIA (Feature 003), com POST /api/v1/analises como adaptador, e validadores → MCP → LLM → validação da saída, retornando resultados/limitações/revisão humana; bloquear etapas dependentes em falha impeditiva. Arquivos: `src/Api.Agente/Analise/AnaliseSpedService.cs`, `src/Api.Agente/Controllers/AnalisesController.cs`. Depende: AG006, AG008, AG010, AG011. Rastreio: FR-AG-001–009.
-- [ ] AG013 Executar ponta a ponta entre APIs separadas com layout conhecido, negativo, falha MCP, falha OpenAI e referência inválida; validar tokens, isolamento e ausência de conformidade indevida. Arquivos: `tests/Api.Agente.Tests/Integration/AnalysisJourneyTests.cs`, `validation/interoperability.md`. Depende: AG012, feature 001 T049. Rastreio: SC-AG-001–004.
+- [X] AG013 Executar ponta a ponta entre APIs separadas com layout conhecido, negativo, falha MCP, falha OpenAI e referência inválida; validar tokens, isolamento e ausência de conformidade indevida. Arquivos: `tests/Api.Agente.Tests/Integration/AnalysisJourneyTests.cs`, `validation/interoperability.md`. Depende: AG012, feature 001 T049. Rastreio: SC-AG-001–004.
 - [ ] AG014 Aprovar corpus/rubrica/modelo gerador, executar avaliação oficial, medir custo/latência completa e revisar contratos/DoD com evidências; não concluir com insumos ausentes ou critério falho. Arquivos: `evaluation/manifest.json`, `evaluation/parecer-report.md`, `validation/verification-report.md`. Depende: AG013, AG001, feature 001 T077 e gates reais de ambas as APIs. Rastreio: SC-AG-005.
 
 - [X] AG015 Adicionar OpenAPI/Swagger UI de Development para testar leitura/análise/consumo/diagnóstico, com upload bruto binário, JWT por operação e respeito ao modo local/transporte; verificar ausência em Production. Arquivos: `src/Api.Agente/Infrastructure/OpenApi/AgentOpenApi.cs`, `tests/Api.Agente.Tests/Integration/SwaggerTests.cs`. Depende: AG004 e adaptadores REST de AG012 (implementados parametrizados). Rastreio: FR-AG-001/008/009. Solicitação explícita do usuário em 2026-11-10; não habilita política ou suporte fiscal pendentes. Evidência: `validation/swagger.md`.
@@ -94,7 +94,7 @@ serão fornecidos/configurados pelo usuário. Não se cadastram perfis ou polít
 | AG009/010 | JSON/schema/prompt v1, SDK OpenAI real com HTTP simulado nos testes, citações resolvidas, pendências preservadas, recusa/incompleto/retries finitos. Avaliação oficial não presumida. |
 | AG011 | Intenção antes da tentativa, uso conhecido inclusive falhas, PostgreSQL próprio/migração/papéis segregados, consulta isolada e expurgo por lotes implementados/testados. Pendente política/conexão reais e operação aprovada. Custo estimado por `Llm:Pricing` com tokens em cache (ADR 0004); sem tabela ou uso, NULL; faturamento do provedor NULL. |
 | AG012 | AnaliseSpedService + POST /api/v1/analises + GET consumo implementados para cobertura estrutural parcial. Depende de AG001/006/011 para aceite integral; não retorna conformidade nem completed. |
-| AG013 | Jornada REST/Kestrel → SDK MCP em outro processo → LLM sintético → PostgreSQL próprio passou, incluindo falhas/negativos/isolamento. Pendente ensaio com versão final da Api.RAG e matriz T049; não equivale a aprovação entre as APIs reais. |
+| AG013 | Concluída em 2026-11-11: CrossApiJourneyTests contra a Api.RAG real em outro processo (JWT, PgVector, contrato 1.0) com layout conhecido, sem documentos, falha de embeddings, token recusado e falhas do gerador; jornada sintética anterior cobre referência inválida. Provedores (embeddings/LLM) sintéticos na suíte; não é aprovação produtiva nem avaliação (AG014). |
 | AG014 | Pendente corpus/rubrica/revisores, chamada real autorizada/avaliada, custo/latência e aceite fiscal/produção. |
 
 125 testes aprovados, zero ignorados; [evidência e rastreabilidade](validation/interoperability.md).
@@ -116,3 +116,11 @@ Parte de AG011. ADR 0004: tabela `Llm:Pricing` (input, cache, output, moeda, ref
 tokens em cache lidos do provedor, migração `0002_llm_cached_tokens` e custo estimado gravado por
 tentativa. Sem tabela, custo NULL. Execução real local: US$ 0,001306 por análise com 98% do input em
 cache. Suíte atual: 138 aprovados, zero falhas/ignorados. AG011 segue aberta por política/conexão reais.
+
+## Incremento — ponta a ponta com a Api.RAG real (2026-11-11)
+
+AG013 concluída. Api.RAG.Tests ganhou o modo `--rag-server` (Api.RAG real com PostgreSQL próprio,
+PDF sintético publicado e token de serviço); Api.Agente.Tests o inicia uma vez por classe
+(`RealRagServer`) e executa 6 jornadas em CrossApiJourneyTests. Referência de compilação sem
+assembly (`ReferenceOutputAssembly=false`): nenhum tipo da RAG entra na Api.Agente. Suíte atual:
+144 aprovados, zero falhas/ignorados. [Evidência](validation/interoperability.md).

@@ -11,6 +11,11 @@ internal static class TestProgram
             return McpConsumerProcess.RunChildAsync();
         }
 
+        if (args is ["--rag-server"])
+        {
+            return RagServerProcess.RunChildAsync();
+        }
+
         if (args.Any(arg => arg is "-automated" or "@@"))
         {
             return Xunit.Runner.InProc.SystemConsole.ConsoleRunner.Run(args);

@@ -26,6 +26,7 @@ por este incremento. Alterações concorrentes daquele serviço não são evidê
 | FR-AG-007; AG011 parcial | AnalysisPipelineTests: tentativas finitas, JSON inválido seguido de sucesso, esgotamento, timeout, cancelamento, recusa e incompleto; uso conhecido mantido inclusive falha, sem zero fabricado. Intenção pending antes da chamada; falha na gravação impede repetir chamada faturável. OpenAiParecerTests: 429 sem retry oculto, uso ausente/objeto vazio permanece nulo, recusa/truncamento preservam uso reportado. |
 | FR-AG-007/009; AG011 parcial | ConsumptionTests + jornada PostgreSQL: duas tentativas independentes, tokens conhecidos/ausentes, custos/moedas desconhecidos nulos, isolamento de subject/organization_id, expiração, expurgo em lote/ordem correta/idempotência, preservação de retenção vigente e DDL negado ao papel HTTP. GET consumo expõe lacunas e agregação conhecida por modelo. |
 | SC-AG-001–004; AG012/013 parcial | AnalysisJourneyTests: REST/Kestrel → MCP separado → parecer sintético → consumo real próprio, retry medido e referências vinculadas. Negativos do arquivo, ausência de perfil, erro remoto MCP, referência errada, JSON inválido e recusa não viram conformidade. |
+| SC-AG-001–004; AG013 (2026-11-11) | CrossApiJourneyTests: Api.Agente → **Api.RAG real** em outro processo (modo `--rag-server` de Api.RAG.Tests: Kestrel, JWT de serviço, PostgreSQL/PgVector, busca híbrida, contrato 1.0) → gerador sintético. Layout conhecido: evidências reais, cada referência resolvida e idêntica, parecer cita só referências recebidas, consumo no PostgreSQL próprio e 404 para outro sujeito. Negativos: layout sem documentos → partial/`NO_ELIGIBLE_EVIDENCE` sem LLM; falha de embeddings na RAG → failed/`KNOWLEDGE_REMOTE_FAILURE` com trace `technical_failure`; token recusado pela RAG → failed/`KNOWLEDGE_ACCESS_DENIED`; recusa (1 tentativa) e JSON inválido (2 tentativas) do gerador → failed. Nenhum caso devolve parecer aceito ou conformidade. |
 
 ## Reprodução
 
@@ -55,10 +56,13 @@ Formatação dos dois projetos: exit code 0, sem alterações necessárias.
 - Campos por registro, hierarquia de blocos e regras fiscais integrais não estão implementados.
   Resultado atual é partial/failed/unsupported, nunca conformidade/completed; revisão humana
   é obrigatória. Leitura simples pode funcionar sem política de persistência.
-- Preço/faturamento ausente é NULL. Cálculo tarifário e relatórios monetários dependem de
-  catálogo aprovado; não se atribui consumo de embeddings da RAG à Api.Agente.
-- Não houve ensaio com a versão final concorrente da Api.RAG. AG013 real/T049 continuam
-  pendentes. Não se declara SLA ou interoperabilidade produtiva por servidor sintético.
+- Custo estimado vem de `Llm:Pricing` (ADR 0004); sem tabela, NULL. Faturamento do provedor
+  é NULL; não se atribui consumo de embeddings da RAG à Api.Agente.
+- AG013 executado contra a Api.RAG real (2026-11-11), com embeddings e gerador sintéticos;
+  T049 da feature 001 concluído (validation/us3.md). Referência inválida só é exercitada pelo
+  servidor MCP sintético (a RAG real não fabrica referências). A chamada com OpenAI real foi
+  verificada manualmente em ambiente local (ADR 0004), fora da suíte automatizada. Não se
+  declara SLA ou interoperabilidade produtiva.
 - Corpus/rubrica/revisores, avaliação real do modelo e custo/latência integral são AG014.
   Compatibilidade técnica com Structured Outputs não comprova correção tributária da prosa.
 - Feature 003 A2A/SOFIA, memória e configuração produtiva não foram implementadas neste escopo.

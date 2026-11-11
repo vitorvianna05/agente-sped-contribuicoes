@@ -10,6 +10,8 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../../src/Api.Agente/Api.Agente.csproj" />
+    <!-- AG013: Api.RAG real em outro processo; só garante a compilação, sem referenciar o assembly. -->
+    <ProjectReference Include="../Api.RAG.Tests/Api.RAG.Tests.csproj" ReferenceOutputAssembly="false" Private="false" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="ModelContextProtocol.AspNetCore" />
