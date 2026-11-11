@@ -15,7 +15,7 @@ internal sealed class ProcessarEmbeddings(IKnowledgeStore store, IProfileEmbeddi
                 continue;
             }
 
-            var result = await provider.GenerateAsync(new EmbeddingRequest(job.OperationId, job.CorrelationId, chunk.Text,
+            var result = await provider.GenerateAsync(new EmbeddingRequest(job.OperationId, job.CorrelationId, chunk.EmbeddingInput,
                 job.Profile.EmbeddingProvider, job.Profile.EmbeddingModel, job.Profile.EmbeddingDimensions), cancellationToken);
             await store.SaveVectorAsync(job, chunk.ChunkId, result.Vector, clock.GetUtcNow(), cancellationToken);
         }

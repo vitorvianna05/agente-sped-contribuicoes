@@ -23,7 +23,7 @@ internal sealed class ConsultarConhecimento(IKnowledgeStore store, IKnowledgeAcc
             await store.RequireProfileAsync(profile, token);
             var response = await embeddings.Create(profile).GenerateAsync(new EmbeddingRequest(operation, correlation, query.ReplaceLineEndings("\n"),
                 profile.EmbeddingProvider, profile.EmbeddingModel, profile.EmbeddingDimensions), token);
-            var found = await store.SearchAsync(response.Vector, profile, type, layout, token);
+            var found = await store.SearchAsync(response.Vector, query.ReplaceLineEndings("\n"), profile, type, layout, token);
             return new EvidenceOutcome(found.Length == 0 ? "insufficient_evidence" : "evidence_found", found,
                 found.Length == 0 ? "NO_ELIGIBLE_EVIDENCE" : "FISCAL_SUFFICIENCY_NOT_ASSESSED");
         }, cancellationToken);

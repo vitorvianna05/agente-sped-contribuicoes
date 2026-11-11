@@ -16,10 +16,22 @@ internal sealed partial class TokenWindowSegmenter : ITextSegmenter
     {
         profile.Validate();
         var result = new List<Trecho>();
-        foreach (var page in pages)
+        var sections = profile.SegmentationStrategy == StructuralSegmenter.RecordSections;
+        string? section = null; // Título do registro corrente, observado no documento e herdado nas páginas seguintes.
+        foreach (var page in PageNormalizer.Normalize(pages, profile.NormalizationVersion))
         {
-            foreach (var span in StructuralSegmenter.Occurrences(page.Text, profile.SegmentationStrategy))
+            // Sumário cita títulos de registros sem defini-los: não abre seção e encerra a herança.
+            var contents = sections && StructuralSegmenter.IsContentsPage(page.Text);
+            if (contents)
             {
+                section = null;
+            }
+            foreach (var span in StructuralSegmenter.Occurrences(page.Text, contents ? "token-window" : profile.SegmentationStrategy))
+            {
+                if (sections && !contents && StructuralSegmenter.HeadingAt(page.Text, span.Start) is { } heading)
+                {
+                    section = heading;
+                }
                 var matches = Tokens().Matches(page.Text.Substring(span.Start, span.Length));
                 for (var first = 0; first < matches.Count; first += profile.ChunkTokens - profile.OverlapTokens)
                 {
@@ -29,7 +41,7 @@ internal sealed partial class TokenWindowSegmenter : ITextSegmenter
                     var text = page.Text.Substring(start, length);
                     var chunk = new Trecho(Guid.NewGuid(), generationId, result.Count, text,
                         ContentHash.Compute(Encoding.UTF8.GetBytes(text)), [new SourceSpan(page.PhysicalPage, start, length)],
-                        new Localizacao("available", [page.PhysicalPage], page.PrintedLabel is null ? [] : [page.PrintedLabel], null, null),
+                        new Localizacao("available", [page.PhysicalPage], page.PrintedLabel is null ? [] : [page.PrintedLabel], sections ? section : null, null),
                         Guid.NewGuid(), at);
                     chunk.Validate();
                     result.Add(chunk);

@@ -8,8 +8,8 @@ internal sealed record PerfilProcessamento(Guid ProfileId, string ExtractorVersi
     public void Validate()
     {
         if (ProfileId == Guid.Empty || ExtractorVersion != "pdfpig-0.1.16-reading-order-v1" ||
-            NormalizationVersion != "line-endings-v1" || QueryNormalizationVersion != "line-endings-v1" ||
-            TokenizerVersion != "whitespace-v1" || SegmentationStrategy is not ("structural" or "token-window") ||
+            NormalizationVersion is not ("line-endings-v1" or "repeated-lines-v1") || QueryNormalizationVersion != "line-endings-v1" ||
+            TokenizerVersion != "whitespace-v1" || SegmentationStrategy is not ("structural" or "token-window" or "record-sections") ||
             ChunkTokens <= 0 || OverlapTokens < 0 || OverlapTokens >= ChunkTokens ||
             EmbeddingDimensions <= 0 || EmbeddingMetric != "cosine" ||
             string.IsNullOrWhiteSpace(EmbeddingProvider) || string.IsNullOrWhiteSpace(EmbeddingModel) ||

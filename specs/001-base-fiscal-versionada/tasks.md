@@ -216,6 +216,7 @@ P01 deixou de bloquear (sem exclusão) e P02 não condiciona a busca. T084 perma
 - [ ] T083 Consolidar matriz FR-001–022, QR-001–003 e SC-001–010 → tarefas → nomes dos testes → evidências/TRX; revisar constitution 1.1.0 e contratos, sinalizar desvios ou falhas sem aprovação fictícia. Arquivos: `specs/001-base-fiscal-versionada/validation/traceability.md`. Depende de: T082. Rastreio: constitution §2.12, §7.
 - [X] T085 Simplificar a Api.RAG para ingestão e busca via MCP: remover Idempotency-Key/If-Match, publicar automaticamente ao concluir vetores, retirar versões anteriores da mesma fonte, reaproveitar/refazer geração por reenvio, usar o perfil configurado na busca e remover approve/reprocess/withdraw/retained-artifacts/expurge com o código e testes exclusivos; registrar desvio constitucional. Arquivos: `src/Api.RAG/Infrastructure/Knowledge/Persistence/KnowledgePublication.cs`, `src/Api.RAG/Infrastructure/Knowledge/Persistence/DocumentRepository.cs`, `src/Api.RAG/Domain/Knowledge/VersaoDocumental.cs`, `src/Api.RAG/Infrastructure/Configuration/RagOptionsValidator.cs`, `tests/Api.RAG.Tests/Integration/CompleteRagJourneyTests.cs`, `specs/001-base-fiscal-versionada/adrs/0009-simplificacao-ingestao-busca.md`. Depende de: T062. Rastreio: FR-010–014, FR-022; ADR 0009.
 - [X] T086 Ambiente local e configuração de desenvolvimento: PostgreSQL/pgvector + pgAdmin em Docker, scripts de setup/ingestão, seção `OpenAI` (chave, modelos, preços no consumo), etapa vetorial ligada pela chave, Swagger em Development e limites para o Guia Prático (433 páginas). Arquivos: `infra/local/docker-compose.yml`, `scripts/local/setup-rag.ps1`, `scripts/local/ingest-sample.ps1`, `src/Api.RAG/Infrastructure/Configuration/RagOptions.cs`, `src/Api.RAG/Endpoints/OpenApi/KnowledgeOpenApi.cs`, `tests/Api.RAG.Tests/Unit/OpenAiConfigurationTests.cs`, `specs/001-base-fiscal-versionada/adrs/0010-ambiente-local-openai-swagger.md`. Depende de: T029, T033. Rastreio: constitution §2.10 (consumo); P04 local.
+- [X] T087 Melhorar a relevância da busca: busca híbrida (cosseno + tsvector português, RRF), normalização `repeated-lines-v1`, segmentação `record-sections` com seção observada e sumário excluído, embedding com título da seção, conjunto técnico de avaliação e script de medição; perfil de desenvolvimento v5. Arquivos: `src/Api.RAG/Infrastructure/Knowledge/Persistence/Migrations/0010_lexical_search.sql`, `src/Api.RAG/Infrastructure/Knowledge/Persistence/KnowledgeRetrieval.cs`, `src/Api.RAG/Ingestao/PageNormalizer.cs`, `src/Api.RAG/Ingestao/StructuralSegmenter.cs`, `src/Api.RAG/Ingestao/TokenWindowSegmenter.cs`, `tests/Api.RAG.Tests/Unit/SegmentationQualityTests.cs`, `specs/001-base-fiscal-versionada/evaluation/busca-guia-1.35.json`, `scripts/local/avaliar-busca.ps1`, `specs/001-base-fiscal-versionada/adrs/0011-relevancia-busca-hibrida.md`. Depende de: T085, T086. Rastreio: FR-004–007, FR-017, FR-021 (conjunto técnico, não oficial); não substitui T069/T077.
 - [ ] T084 Atualizar ADR/plan/research/guia apenas para refletir decisões realmente implementadas e avaliadas; registrar DoD e riscos remanescentes, sem alterar a constitution, executar deploy ou marcar gates externos aprovados por suposição. Arquivos: `specs/001-base-fiscal-versionada/plan.md`, `specs/001-base-fiscal-versionada/research.md`, `specs/001-base-fiscal-versionada/adrs/0001-arquitetura-rag.md`, `specs/001-base-fiscal-versionada/validation/done.md`. Depende de: T083. Rastreio: QR-003; constitution §7–8.
 
 **Checkpoint**: validar as saídas da fase e as dependências antes do próximo incremento.
@@ -232,7 +233,7 @@ Setup T001–T006
                  └─ US3 T044–T049
                       └─ US4 T050–T065
                            └─ US5 T066–T079
-                                └─ Fechamento T080–T084 (T085/T086: simplificação e ambiente local, concluídas)
+                                └─ Fechamento T080–T084 (T085–T087: simplificação, ambiente local e relevância, concluídas)
 ```
 
 O grafo mostra ordem conservadora de integração. Os predecessores por tarefa são o grafo
@@ -332,6 +333,7 @@ Pré-condição: T065 concluída; usar fixture e manifesto sintéticos, sem pres
 | FR-022 | T027–T029, T038–T043 | Embeddings de documentos/consulta, espaço compatível e busca semântica via MCP. |
 | FR-020–021 | T025, T028–T029, T067–T070, T077 | Manifesto aprovado e comparação documentada (sem gate de adoção), SC-007. |
 | ADR 0009/0010 | T085, T086 | Simplificação, ambiente local, OpenAI e Swagger; 97 testes. |
+| ADR 0011 | T087 | Busca híbrida e segmentação por registro; hit@5 93%, MRR 0,844 em conjunto técnico; 100 testes. |
 | QR-001–003 | T002–T003, T012, T021–T025, T080, T083–T084 | DDD, organização, análise estática e ADR revisável. |
 | SC-009–010 | T072–T078, T082 | 300 PDFs, 5 consultas simultâneas, ≥95% completas em até 5s pelo cliente. |
 | Consumo constitucional | T016–T017, T029, T045, T081 | Todas as tentativas, métricas nulas e custo estimado separado. |
@@ -369,8 +371,8 @@ lote, manter os arquivos isolados e integrar os resultados antes das tarefas dep
 
 ## Notes
 
-- Total: **86 tarefas** — Setup 6, Fundação 12, US1 16, US2 9, US3 6, US4 16, US5 14, Fechamento 7 (T085/T086 acrescentadas em 2026-11-10).
-- Estado atual: 59 concluídas, 22 abertas e 5 canceladas (T051, T052, T063, T071, T075). Tasks *Supersedidas* continuam concluídas como histórico; o comportamento vigente está na ADR 0009. Não transformar obtenção de aprovação em aprovação presumida.
+- Total: **87 tarefas** — Setup 6, Fundação 12, US1 16, US2 9, US3 6, US4 16, US5 14, Fechamento 8 (T085/T086 acrescentadas em 2026-11-10; T087 em 2026-11-11).
+- Estado atual: 60 concluídas, 22 abertas e 5 canceladas (T051, T052, T063, T071, T075). Tasks *Supersedidas* continuam concluídas como histórico; o comportamento vigente está na ADR 0009. Não transformar obtenção de aprovação em aprovação presumida.
 - Quantidades/limiares não fornecidos permanecem externos e avaliáveis, nunca defaults aprovados.
 - Scripts/comandos efetivamente adotados devem ser atualizados no quickstart durante implementação.
 - P01–P04 podem bloquear tarefas específicas e aceite; não alegar feature concluída com elas abertas.
@@ -416,3 +418,10 @@ grandes (Guia Prático 1.35: 433 páginas, 814 trechos). ADR 0009: sem Idempoten
 publicação automática, nova versão retira as anteriores, reenvio refaz geração com falha ou sem
 trechos, busca com o perfil configurado e remoção de approve/reprocess/withdraw/retained-artifacts/
 expurge, catálogo e retenção ativa. Desvio constitucional definitivo registrado. Evidência: 97 testes.
+
+## Histórico — relevância da busca (2026-11-11)
+
+T087 concluída. ADR 0011: busca híbrida (migração 0010), perfil de desenvolvimento v5
+(`repeated-lines-v1`, `record-sections`) e consulta da Api.Agente no vocabulário do guia.
+Conjunto técnico de 15 consultas sobre o Guia 1.35: hit@5 57% → 93%, MRR 0,332 → 0,844.
+Evidência: Api.RAG 100 testes, Api.Agente 130 testes. T069/T077 continuam pendentes.

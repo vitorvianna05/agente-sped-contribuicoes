@@ -79,13 +79,13 @@ internal sealed partial class KnowledgeRepository(RagDataSource source, TimeProv
         update.Parameters.AddWithValue("result", operation.ResultCode!);
         await update.ExecuteNonQueryAsync(cancellationToken);
         var chunks = new List<VectorChunk>();
-        await using var load = new NpgsqlCommand("SELECT chunk_id,text,embedding FROM rag.chunks WHERE generation_id=@id ORDER BY ordinal", connection, transaction);
+        await using var load = new NpgsqlCommand("SELECT chunk_id,text,embedding,location->>'section' FROM rag.chunks WHERE generation_id=@id ORDER BY ordinal", connection, transaction);
         load.Parameters.AddWithValue("id", generation.GenerationId);
         await using (var r = await load.ExecuteReaderAsync(cancellationToken))
         {
             while (await r.ReadAsync(cancellationToken))
             {
-                chunks.Add(new(r.GetGuid(0), r.GetString(1), r.IsDBNull(2) ? null : r.GetFieldValue<Vector>(2).ToArray()));
+                chunks.Add(new(r.GetGuid(0), r.GetString(1), r.IsDBNull(2) ? null : r.GetFieldValue<Vector>(2).ToArray(), r.IsDBNull(3) ? null : r.GetString(3)));
             }
         }
 

@@ -22,7 +22,7 @@ internal static class KnowledgeOpenApi
           "kind": "guide",
           "originUri": "https://example.com/guia-pratico.pdf",
           "officialVersion": "1.35",
-          "profileId": "d0c0a1e0-0000-4000-8000-000000000001",
+          "profileId": "d0c0a1e0-0000-4000-8000-000000000005",
           "applicabilities": [
             { "documentType": "EFD-Contribuicoes", "layoutVersion": "1.35", "officialBasis": "Desenvolvimento local" }
           ]

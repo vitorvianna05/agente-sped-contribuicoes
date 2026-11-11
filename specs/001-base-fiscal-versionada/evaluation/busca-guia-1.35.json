@@ -1,0 +1,22 @@
+{
+  "description": "Conjunto técnico de desenvolvimento para medir a relevância da busca sobre o Guia Prático EFD-Contribuições 1.35 (SHA-256 60eace45...). Montado a partir dos títulos dos registros no próprio guia; NÃO é o conjunto aprovado pelo responsável fiscal (T069).",
+  "tipoDocumento": "EFD-Contribuicoes",
+  "versaoLayout": "1.35",
+  "cases": [
+    { "id": "R0000", "query": "Registro 0000 abertura do arquivo digital e identificação da pessoa jurídica", "expectedPages": [66, 67] },
+    { "id": "R9999", "query": "Registro 9999 encerramento do arquivo digital", "expectedPages": [416] },
+    { "id": "R0110", "query": "Registro 0110 regimes de apuração da contribuição social e de apropriação de crédito", "expectedPages": [71, 72] },
+    { "id": "R0140", "query": "Registro 0140 tabela de cadastro de estabelecimentos", "expectedPages": [78, 79] },
+    { "id": "R0150", "query": "Registro 0150 tabela de cadastro do participante", "expectedPages": [81, 82] },
+    { "id": "R0500", "query": "Registro 0500 plano de contas contábeis", "expectedPages": [89, 90] },
+    { "id": "RC100", "query": "Registro C100 documento nota fiscal código 01, 1B, 04 e 55", "expectedPages": [105, 106] },
+    { "id": "RC170", "query": "Registro C170 complemento do documento itens do documento", "expectedPages": [117, 118] },
+    { "id": "RM200", "query": "Registro M200 consolidação da contribuição para o PIS/Pasep do período", "expectedPages": [305, 306] },
+    { "id": "R1900", "query": "Registro 1900 consolidação dos documentos emitidos no período por pessoa jurídica submetida ao lucro presumido", "expectedPages": [410, 411] },
+    { "id": "N-PERIODO", "query": "como informar a data inicial e a data final do período da escrituração na abertura do arquivo", "expectedPages": [66, 67] },
+    { "id": "N-LINHAS", "query": "quantidade total de linhas do arquivo digital informada no encerramento", "expectedPages": [416] },
+    { "id": "N-FORMATO", "query": "características do arquivo digital: formato texto ISO 8859-1, delimitador de campos e fim de linha", "expectedPages": [33, 34] },
+    { "id": "AGENTE", "query": "EFD-Contribuições, leiaute 006, período 2024-01-01 a 2024-01-31. Características do Arquivo Digital: formato texto ISO 8859-1, delimitador de campos e fim de linha. Registro 0000: Abertura do Arquivo Digital. Registro 9999: Encerramento do Arquivo Digital e quantidade total de linhas (QTD_LIN). Registro 0000: Abertura do Arquivo Digital e Identificação da Pessoa Jurídica, data inicial (DT_INI) e data final (DT_FIN) da escrituração. Registro 0000: código da versão do leiaute (COD_VER).", "expectedPages": [33, 66, 67, 416] },
+    { "id": "AGENTE-V1", "query": "EFD Contribuicoes leiaute 006; periodo 2024-01-01 a 2024-01-31; Fundamente as verificacoes estruturais de abertura, encerramento e quantidade de linhas. EFD.LEXICAL_AND_ENVELOPE:passed EFD.0000.PERIOD:passed EFD.LAYOUT_CONTEXT:passed", "expectedPages": [33, 66, 67, 416] }
+  ]
+}

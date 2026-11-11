@@ -3,7 +3,11 @@ using Api.RAG.Domain.Knowledge;
 
 namespace Api.RAG.Application.Knowledge.Ports;
 
-internal sealed record VectorChunk(Guid ChunkId, string Text, float[]? Vector);
+internal sealed record VectorChunk(Guid ChunkId, string Text, float[]? Vector, string? Section = null)
+{
+    /// <summary>Entrada do embedding: título da seção (quando houver) seguido do texto exato do trecho.</summary>
+    public string EmbeddingInput => Section is null ? Text : Section + "\n" + Text;
+}
 internal sealed record EmbeddingJob(Guid GenerationId, Guid OperationId, Guid Owner, PerfilProcessamento Profile, VectorChunk[] Chunks, string CorrelationId);
 internal sealed record RetrievedEvidence(Guid ReferenceId, Guid SourceId, Guid DocumentVersionId, Guid GenerationId, Guid ChunkId,
     string Issuer, string OfficialIdentifier, string OfficialVersion, Uri OriginUri, string Text, string DocumentType,
@@ -16,7 +20,8 @@ internal interface IKnowledgeStore
     Task<EmbeddingJob?> ClaimEmbeddingAsync(DateTimeOffset now, TimeSpan lease, int maximumAttempts, CancellationToken cancellationToken);
     Task SaveVectorAsync(EmbeddingJob job, Guid chunkId, float[] vector, DateTimeOffset at, CancellationToken cancellationToken);
     Task CompleteEmbeddingAsync(EmbeddingJob job, string? failure, DateTimeOffset at, CancellationToken cancellationToken);
-    Task<RetrievedEvidence[]> SearchAsync(float[] vector, PerfilProcessamento profile, string type, string layout, CancellationToken cancellationToken);
+    /// <summary>Busca híbrida: ranking vetorial e textual combinados por RRF; score devolvido é o cosseno.</summary>
+    Task<RetrievedEvidence[]> SearchAsync(float[] vector, string query, PerfilProcessamento profile, string type, string layout, CancellationToken cancellationToken);
     Task<(RetrievedEvidence? Evidence, bool Purged)> ResolveAsync(Guid referenceId, CancellationToken cancellationToken);
     Task<Guid> BeginQueryAsync(string principal, string? organization, string correlation, DateTimeOffset at, CancellationToken cancellationToken);
     Task AuditQueryAsync(Guid queryId, string principal, string? organization, string correlation, string result, DateTimeOffset at, CancellationToken cancellationToken);

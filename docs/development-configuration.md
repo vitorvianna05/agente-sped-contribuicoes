@@ -81,8 +81,8 @@ No pgAdmin, o servidor **Api.RAG (local)** aparece no grupo *Agente SPED*; a sen
 `infra/local/pgadmin/acompanhar-ingestao.sql` mostra operações, gerações, trechos e auditoria.
 Para recomeçar do zero: `docker compose -f infra/local/docker-compose.yml down -v` e rodar o setup.
 
-O exemplo Development traz o perfil `candidate` `d0c0a1e0-0000-4000-8000-000000000001`
-(token-window 400/50, text-embedding-3-small/1536) e retenção `local-dev-v1`/
+O exemplo Development traz o perfil `candidate` `d0c0a1e0-0000-4000-8000-000000000005`
+(`repeated-lines-v1`, `record-sections` 400/50, text-embedding-3-small/1536; ADR 0011) e retenção `local-dev-v1`/
 `LOCAL-DEV-NOT-APPROVED`. São valores de desenvolvimento, não perfil avaliado nem política aprovada.
 
 ## Ingestão, reenvio e busca
@@ -98,7 +98,11 @@ O exemplo Development traz o perfil `candidate` `d0c0a1e0-0000-4000-8000-0000000
   o mesmo identificador → 409 `SOURCE_METADATA_CONFLICT`.
 - A busca (`BuscarConhecimento`) exige `tipoDocumento` e `versaoLayout` iguais a uma
   aplicabilidade do documento (ex.: `EFD-Contribuicoes` / `1.35`). Sem `Threshold` não há corte
-  de similaridade; sem `TopK`, até 5 trechos.
+  de similaridade; sem `TopK`, até 5 trechos. A busca é híbrida (cosseno + texto em português,
+  fundidos por RRF): a ordem é a da fusão e `score` continua sendo o cosseno (ADR 0011).
+- Relevância: `./scripts/local/avaliar-busca.ps1 -Detalhar` roda as consultas de
+  `specs/001-base-fiscal-versionada/evaluation/busca-guia-1.35.json` no MCP local e mostra
+  hit@k/MRR (exige o Guia 1.35 ingerido; conjunto técnico, não aprovado).
 
 ## Modo local de autenticação
 

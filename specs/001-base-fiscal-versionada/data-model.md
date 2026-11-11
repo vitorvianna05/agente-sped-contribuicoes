@@ -84,7 +84,12 @@ Perfil de busca: `Retrieval:AdoptedProfileId` ou o único perfil configurado, co
 `Embeddings` (ADR 0009). `TopK` ausente = 5; `Threshold` ausente = sem corte. Nenhum valor de
 chunk, overlap, topK ou limiar foi avaliado (desvio registrado na ADR 0009).
 A query usa o mesmo espaço de embedding do perfil; busca exata por cosseno somente sobre
-gerações desse perfil, sem misturar distâncias de perfis diferentes.
+gerações desse perfil, sem misturar distâncias de perfis diferentes, fundida por RRF com a busca
+textual (`rag.chunks.text_search`, português, seção + texto). `score` é o cosseno; a ordem é a da
+fusão (ADR 0011). Normalização `line-endings-v1` ou `repeated-lines-v1`; segmentação
+`structural`, `token-window` ou `record-sections` (seção = título "Registro XXXX: …" observado,
+herdado até o próximo; sumário não abre seção). O embedding recebe seção + texto; o texto
+persistido não muda.
 
 ### Catálogo (removido)
 
@@ -177,4 +182,6 @@ embedding por trecho, estado/lease vetorial separado, manifesto integral e activ
 além de catálogo, retenção, tombstones e command_results (sem uso após ADR 0009). A migração
 0009_retention_obligations também permanece apenas por compatibilidade. Nenhuma migração foi
 removida ou alterada: as nove continuam aplicadas na mesma ordem e com o mesmo checksum.
+A migração 0010_lexical_search acrescenta a coluna gerada `text_search` e seu índice GIN
+(ADR 0011).
 Avaliação/capacidade oficiais continuam pendentes; nenhum schema fiscal foi inventado.

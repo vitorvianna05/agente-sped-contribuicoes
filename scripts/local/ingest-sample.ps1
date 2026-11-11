@@ -13,7 +13,7 @@
 param(
     [string]$PdfPath,
     [string]$BaseUrl = 'https://localhost:60994',
-    [string]$ProfileId = 'd0c0a1e0-0000-4000-8000-000000000001',
+    [string]$ProfileId = 'd0c0a1e0-0000-4000-8000-000000000005',
     [string]$Issuer = 'RFB',
     [string]$OfficialIdentifier = 'documento-sintetico-local',
     [string]$Title = 'Documento sintético de desenvolvimento',
