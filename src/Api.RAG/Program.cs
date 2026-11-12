@@ -15,6 +15,7 @@ using Api.RAG.Ingestao;
 using Api.RAG.Rag;
 using Api.RAG.Tools;
 using Microsoft.AspNetCore.Http.Timeouts;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.Options;
 using ModelContextProtocol.AspNetCore;
 
@@ -54,6 +55,20 @@ public sealed class Program
             new RagOptionsValidator(provider.GetRequiredService<IHostEnvironment>().IsEnvironment("Testing"),
                 provider.GetRequiredService<IHostEnvironment>().IsDevelopment()));
         builder.Services.AddSingleton(TimeProvider.System);
+        builder.Services.AddOptions<ForwardedHeadersOptions>().Configure<IOptions<RagOptions>>((forwarded, configured) =>
+        {
+            // TLS terminado em proxy confiável (Render/Vercel): X-Forwarded-Proto/For só dos IPs/redes configurados.
+            var transport = configured.Value.Transport;
+            forwarded.KnownProxies.Clear();
+            forwarded.KnownIPNetworks.Clear();
+            forwarded.ForwardLimit = 1;
+            forwarded.ForwardedHeaders = transport.TrustsForwardedHeaders ? ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto : ForwardedHeaders.None;
+            // Valores inválidos são recusados no startup por RagOptionsValidator.
+            foreach (var proxy in transport.TrustedProxies)
+            { if (System.Net.IPAddress.TryParse(proxy, out var address)) { forwarded.KnownProxies.Add(address); } }
+            foreach (var network in transport.TrustedNetworks)
+            { if (System.Net.IPNetwork.TryParse(network, out var range) && range.PrefixLength > 0) { forwarded.KnownIPNetworks.Add(range); } }
+        });
         builder.Services.AddSingleton(provider => new RagDataSource(provider.GetRequiredService<IOptions<RagOptions>>().Value,
             provider.GetRequiredService<IHostEnvironment>().IsEnvironment("Testing") &&
             provider.GetRequiredService<IOptions<RagOptions>>().Value.ConfigurationPurpose == "SyntheticTestsOnly_NotApprovedForProduction"));

@@ -48,6 +48,12 @@ internal sealed class RagOptionsValidator(bool allowSynthetic = false, bool allo
             errors.Add("Identidade, recurso HTTPS e hosts permitidos devem ser explícitos. Verifique Authentication:Authority, Authentication:Audience, Authentication:Resource, Authentication:RequireHttpsMetadata, Authentication:AllowedHosts e Authentication:AllowedOrigins.");
         }
 
+        if ((options.Transport.TrustedProxies ?? []).Any(proxy => !System.Net.IPAddress.TryParse(proxy, out _)) ||
+            (options.Transport.TrustedNetworks ?? []).Any(network => !System.Net.IPNetwork.TryParse(network, out var parsed) || parsed.PrefixLength == 0))
+        {
+            errors.Add("Transport:TrustedProxies exige IPs e Transport:TrustedNetworks exige CIDR específicos (nunca 0.0.0.0/0 ou ::/0).");
+        }
+
         if (options.Embeddings.Dimensions is not > 0 || string.IsNullOrWhiteSpace(options.Embeddings.Provider) ||
             string.IsNullOrWhiteSpace(options.Embeddings.Model) || options.Embeddings.SdkAutomaticRetriesEnabled)
         {

@@ -7,6 +7,7 @@ internal sealed class RagOptions
     public string? ConfigurationPurpose { get; set; }
     public ConnectionOptions ConnectionStrings { get; set; } = new();
     public AuthenticationOptions Authentication { get; set; } = new();
+    public TransportOptions Transport { get; set; } = new();
     public ProcessingOptions Processing { get; set; } = new();
     public RetrievalOptions Retrieval { get; set; } = new();
     public EmbeddingOptions Embeddings { get; set; } = new();
@@ -95,6 +96,14 @@ internal sealed class AuthenticationOptions
     public string[] AllowedOrigins { get; set; } = [];
     public string[] AllowedHosts { get; set; } = [];
     public CentralAssignment[] CentralPermissionAssignments { get; set; } = [];
+}
+
+/// <summary>Proxies que terminam TLS e encaminham X-Forwarded-Proto/For; vazio = cabeçalhos encaminhados ignorados.</summary>
+internal sealed class TransportOptions
+{
+    public string[] TrustedProxies { get; set; } = [];
+    public string[] TrustedNetworks { get; set; } = [];
+    public bool TrustsForwardedHeaders => TrustedProxies.Length > 0 || TrustedNetworks.Length > 0;
 }
 
 internal sealed class CentralAssignment

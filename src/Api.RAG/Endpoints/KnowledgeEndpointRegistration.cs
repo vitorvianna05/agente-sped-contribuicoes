@@ -13,6 +13,8 @@ internal static class KnowledgeEndpointRegistration
     private static readonly string[] BearerMethods = ["header"];
     public static void MapKnowledgeFoundation(this WebApplication app)
     {
+        // Antes da guarda de transporte: com proxy confiável, IsHttps reflete o TLS terminado nele.
+        app.UseForwardedHeaders();
         app.UseMiddleware<CorrelationMiddleware>();
         app.UseMiddleware<ProblemDetailsHandler>();
         app.UseRequestTimeouts();
