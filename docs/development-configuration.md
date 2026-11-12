@@ -67,6 +67,10 @@ O exemplo Development da Api.Agente traz, apenas para desenvolvimento:
   navegador, listar a origem exata (`http://localhost:4200` em Development; HTTPS nos demais).
   `Transport:TrustedProxies`/`TrustedNetworks` vazios: `X-Forwarded-*` ignorados; preencher só
   com o proxy que termina TLS (feature 003, ADR 0002).
+
+Publicação de demonstração (Vercel/Render/Neon/Auth0): feature 004 em
+`specs/004-publicacao-cloud/` (Dockerfiles, variáveis em `deploy/`, CI e roteiro). A Api.RAG
+também aceita `Transport:TrustedProxies`/`TrustedNetworks`, vazios no exemplo local.
 - `Llm:Pricing`: tabela pública do gpt-4.1-mini (US$ 0,40 input / 0,10 cache / 1,60 output por
   milhão). Cada tentativa grava o custo estimado; `GET /api/v1/analises/{id}/consumo` mostra
   tokens (inclusive em cache), custo, referência e versão da tabela (ADR 0004 da feature 002).

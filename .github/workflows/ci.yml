@@ -1,0 +1,52 @@
+# CI da solução (feature 004): restore travado, formatação, testes com Docker e build das imagens.
+# Não publica imagens nem faz deploy; Vercel e Render constroem a partir do repositório.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_NOLOGO: "1"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Restore (lock files)
+        run: dotnet restore AgenteSpedContrib.slnx --locked-mode
+      - name: Build
+        run: dotnet build AgenteSpedContrib.slnx --no-restore
+      - name: Format
+        run: dotnet format AgenteSpedContrib.slnx --verify-no-changes --no-restore
+      # Testcontainers usa o Docker do runner (PostgreSQL/pgvector descartável). Sem chaves reais.
+      - name: Test Api.RAG
+        run: dotnet test --project tests/Api.RAG.Tests/Api.RAG.Tests.csproj --no-build
+      - name: Test Api.Agente
+        run: dotnet test --project tests/Api.Agente.Tests/Api.Agente.Tests.csproj --no-build
+
+  images:
+    runs-on: ubuntu-latest
+    needs: build-test
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Api.Agente (Dockerfile.vercel)
+        run: docker build -f Dockerfile.vercel -t api-agente:ci .
+      - name: Build Api.RAG (src/Api.RAG/Dockerfile)
+        run: docker build -f src/Api.RAG/Dockerfile -t api-rag:ci .

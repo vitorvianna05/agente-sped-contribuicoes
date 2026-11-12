@@ -1,0 +1,23 @@
+# Api.Agente na Vercel (Container Runtime, beta) — feature 004, skill sofia-devops-free-cloud.
+# Contexto de build: raiz do repositório. A Api.RAG tem imagem própria em src/Api.RAG/Dockerfile (Render).
+# global.json não é copiado: ele fixa o SDK 10.0.3xx local; a imagem traz o SDK 10.0 corrente e o
+# alvo continua net10.0. Pacotes vêm do packages.lock.json (restore --locked-mode).
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+WORKDIR /src
+COPY Directory.Build.props Directory.Packages.props NuGet.Config ./
+COPY src/Api.Agente/Api.Agente.csproj src/Api.Agente/packages.lock.json src/Api.Agente/
+RUN dotnet restore src/Api.Agente/Api.Agente.csproj --locked-mode
+COPY src/Api.Agente/ src/Api.Agente/
+RUN dotnet publish src/Api.Agente/Api.Agente.csproj -c Release -o /app/publish --no-restore /p:UseAppHost=false
+
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+WORKDIR /app
+# Npgsql carrega GSSAPI ao conectar; sem a biblioteca registra erro no log.
+RUN apt-get update && apt-get install -y --no-install-recommends libgssapi-krb5-2 && rm -rf /var/lib/apt/lists/*
+COPY --from=build /app/publish .
+ENV ASPNETCORE_ENVIRONMENT=Production \
+    DOTNET_NOLOGO=1 \
+    APP_DLL=Api.Agente.dll
+USER $APP_UID
+# PORT vem da plataforma em runtime; 8080 só como fallback local. Sem segredos na imagem.
+CMD ["sh", "-c", "export ASPNETCORE_URLS=\"http://0.0.0.0:${PORT:-8080}\"; exec dotnet \"$APP_DLL\""]

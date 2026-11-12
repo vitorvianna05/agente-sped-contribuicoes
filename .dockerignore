@@ -1,0 +1,29 @@
+# Contexto mínimo para Dockerfile.vercel e src/Api.RAG/Dockerfile. Nunca enviar segredos ao build.
+**/bin/
+**/obj/
+.git/
+.github/
+.vs/
+.vscode/
+.idea/
+.claude/
+.agents/
+.specify/
+TestResults/
+tests/
+docs/
+specs/
+# Contrato MCP embutido pela Api.RAG (Api.RAG.csproj).
+!specs/001-base-fiscal-versionada/contracts/mcp-tools.schema.json
+scripts/
+infra/
+deploy/
+# Configuração local com chaves e senhas (ignorada pelo Git, mas presente no disco).
+**/appsettings.Development.json
+**/appsettings.*.local.json
+**/*.user
+.env
+.env.*
+**/.env
+**/.env.*
+**/secrets.json

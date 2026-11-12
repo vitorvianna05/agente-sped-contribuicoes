@@ -2,7 +2,8 @@
 .SYNOPSIS
     Envia um PDF para POST /api/v1/ingest da Api.RAG local e acompanha a operação.
 .DESCRIPTION
-    Requer a API em execução (Development, autenticação local por loopback). Sem -PdfPath,
+    Requer a API em execução (Development, autenticação local por loopback). Para a RAG publicada,
+    definir $env:RAG_ACCESS_TOKEN (token Auth0) e -BaseUrl https://<servico>.onrender.com. Sem -PdfPath,
     gera um PDF sintético de duas páginas. Os metadados usam o perfil de desenvolvimento
     configurado em appsettings.Development.json.
 .EXAMPLE
@@ -78,6 +79,11 @@ if ($SkipCertificateCheck) {
     $handler.ServerCertificateCustomValidationCallback = [System.Net.Http.HttpClientHandler]::DangerousAcceptAnyServerCertificateValidator
 }
 $client = [System.Net.Http.HttpClient]::new($handler)
+if ($env:RAG_ACCESS_TOKEN) {
+    # RAG publicada (feature 004): token M2M do Auth0 com knowledge.ingest/knowledge.audit, lido do ambiente.
+    if (([Uri]$BaseUrl).Scheme -ne 'https') { throw 'RAG_ACCESS_TOKEN exige -BaseUrl HTTPS.' }
+    $client.DefaultRequestHeaders.Authorization = [System.Net.Http.Headers.AuthenticationHeaderValue]::new('Bearer', $env:RAG_ACCESS_TOKEN)
+}
 try {
     $form = [System.Net.Http.MultipartFormDataContent]::new()
     $file = [System.Net.Http.ByteArrayContent]::new($bytes)
