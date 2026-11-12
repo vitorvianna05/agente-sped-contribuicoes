@@ -31,6 +31,7 @@ Não confundir versaoContrato, versão do serviço e versão do protocolo. Refer
 | FR-SO-008 | Repetição segura por principal autorizado + idAgente + idSolicitacao e digest do pedido; mesmo ID/payload retorna mesma operação, payload divergente conflita. Operação durável, prazos, cancelamento, tasks/get e tratamento de estados terminais. |
 | FR-SO-009 | Retornar falha técnica/sem evidência/parcial/layout não suportado sem conformidade indevida; documentos não processados e verificações pendentes devem ser explícitos. SOFIA preserva respostas dos demais agentes. |
 | FR-SO-010 | Logs mínimos sem usuario.nome, pergunta/textos/tokens; auditar IDs/etapas/custos com proprietários distintos. Política aprovada antes de persistir texto/Task/resultado real. |
+| FR-SO-011 | Borda HTTP (ADR 0002): chamadas servidor-servidor da SOFIA, sem Origin, dependem só de rede, HTTPS efetivo, host permitido e JWT. Navegador só recebe permissão CORS se sua origem estiver em `Cors:AllowedOrigins` (política `SofiaBrowser`, vazia por padrão); origem desconhecida não recebe. TLS pode terminar em proxy listado em `Transport:*`; HTTP direto continua negado. |
 
 ## Aceite
 
@@ -45,6 +46,9 @@ Não confundir versaoContrato, versão do serviço e versão do protocolo. Refer
   Outro agente simulado continua retornando seu resultado quando este falha.
 - SC-SO-005: token errado/ausente, documento com instruções e URL de card arbitrária não burlam
   autorização, destino ou versão; logs não contêm dados pessoais/fiscais.
+- SC-SO-006: preflight da origem pactuada recebe Allow-Origin/métodos/cabeçalhos; origem
+  desconhecida não; chamada sem Origin e sem token recebe 401, sem permissão 403; cabeçalho
+  encaminhado de remetente fora da lista não converte HTTP em HTTPS.
 
 ## Pendências antes de ativar
 
@@ -54,7 +58,9 @@ retenção de Task/IDs/resultados, preservação de texto SPED na extração e r
 compatível das referências RAG no contrato v1.0 (campos opcionais somente por acordo).
 Não incluir campo obrigatório proprietário ou usar nome do usuário como credencial.
 
-O serviço atual oferece leitura REST e diagnóstico MCP; não possui Agent Card, servidor A2A,
-análise fiscal integral ou parecer. AG001/005/006/009–014 continuam com suas pendências.
+O serviço atual oferece leitura REST, análise REST parcial com parecer condicionado e diagnóstico
+MCP; não possui Agent Card, servidor A2A nem análise fiscal integral. AG013 foi concluída contra
+a Api.RAG real (2026-11-11); AG001/005/006/011/012/014 continuam com suas pendências. A borda
+HTTP (CORS opcional e TLS em proxy confiável) está implementada (AA011).
 Esta feature prepara a exposição A2A; testes sintéticos podem usar portas dublês, mas não
 habilitam capacidade fiscal ou exposição real. Memória conversacional continua fora do escopo.

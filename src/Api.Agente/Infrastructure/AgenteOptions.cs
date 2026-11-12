@@ -8,6 +8,23 @@ internal sealed class AgenteOptions
 {
     public AgentAuthenticationOptions Authentication { get; set; } = new();
     public AgentLimits Limits { get; set; } = new();
+    public AgentCorsOptions Cors { get; set; } = new();
+    public AgentTransportOptions Transport { get; set; } = new();
+}
+
+/// <summary>Origens de navegador (frontend SOFIA) autorizadas; vazio = CORS desligado (chamadas servidor-servidor não usam CORS).</summary>
+internal sealed class AgentCorsOptions
+{
+    public const string Policy = "SofiaBrowser";
+    public string[] AllowedOrigins { get; set; } = [];
+}
+
+/// <summary>Proxies que terminam TLS e encaminham X-Forwarded-Proto/For; vazio = cabeçalhos encaminhados ignorados.</summary>
+internal sealed class AgentTransportOptions
+{
+    public string[] TrustedProxies { get; set; } = [];
+    public string[] TrustedNetworks { get; set; } = [];
+    public bool TrustsForwardedHeaders => TrustedProxies.Length > 0 || TrustedNetworks.Length > 0;
 }
 
 internal sealed class AgentAuthenticationOptions
@@ -42,8 +59,28 @@ internal sealed class AgenteOptionsValidator(IHostEnvironment environment) : IVa
         {
             return ValidateOptionsResult.Fail("Authentication e Limits devem ser explícitos; dispensa JWT somente em Development.");
         }
+        var origins = options.Cors.AllowedOrigins ?? [];
+        if (origins.Any(origin => !ValidOrigin(origin, environment.IsDevelopment())) ||
+            origins.Distinct(StringComparer.OrdinalIgnoreCase).Count() != origins.Length)
+        {
+            return ValidateOptionsResult.Fail("Cors:AllowedOrigins aceita apenas origens explícitas (esquema://host[:porta], sem caminho nem curinga), HTTPS fora de Development.");
+        }
+        var transport = options.Transport;
+        if ((transport.TrustedProxies ?? []).Any(proxy => !System.Net.IPAddress.TryParse(proxy, out _)) ||
+            (transport.TrustedNetworks ?? []).Any(network => !System.Net.IPNetwork.TryParse(network, out var parsed) || parsed.PrefixLength == 0))
+        {
+            return ValidateOptionsResult.Fail("Transport:TrustedProxies exige IPs e Transport:TrustedNetworks exige CIDR específicos (nunca 0.0.0.0/0 ou ::/0).");
+        }
         return ValidateOptionsResult.Success;
     }
+
+    // Origem = esquema + host + porta. Sem caminho, consulta, fragmento, credenciais ou curinga.
+    private static bool ValidOrigin(string? origin, bool development) =>
+        !string.IsNullOrWhiteSpace(origin) && !origin.Contains('*', StringComparison.Ordinal) && !origin.EndsWith('/') &&
+        Uri.TryCreate(origin, UriKind.Absolute, out var uri) && uri.AbsolutePath == "/" && uri.Query.Length == 0 &&
+        uri.Fragment.Length == 0 && uri.UserInfo.Length == 0 &&
+        (uri.Scheme == Uri.UriSchemeHttps || development && uri.Scheme == Uri.UriSchemeHttp) &&
+        string.Equals(uri.GetLeftPart(UriPartial.Authority), origin, StringComparison.OrdinalIgnoreCase);
 
     public ValidateOptionsResult Validate(string? name, ConhecimentoMcpOptions options)
     {

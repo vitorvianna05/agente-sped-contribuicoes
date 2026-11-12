@@ -69,8 +69,20 @@ Adapter/contratos e testes sintéticos podem avançar antes de AG012 usando port
 retorna parcial explícito. Análise fiscal real depende de AG001/006/009–014 e gates de dados/
 ambiente. Não registrar analisar_documentos como análise fiscal pronta enquanto indisponível;
 acertar disponibilidade/capacidade com SOFIA. Não abrir bypass Development a outra máquina ou
-contêiner: configuração loopback atual não autoriza integração externa. CORS só se navegador
-precisar chamar diretamente, com origens pactuadas; não é requisito de chamadas servidor-servidor.
+contêiner: configuração loopback atual não autoriza integração externa.
+
+## Borda HTTP (skill sofia-cors-rest-a2a; ADR 0002)
+
+- CORS não habilita A2A: SOFIA backend → agente é HTTP comum (rede, DNS, TLS, JWT). Política
+  `SofiaBrowser` só para navegador de origem pactuada, via `Cors:AllowedOrigins` por ambiente
+  (vazia por padrão), aplicada aos controllers; health/Swagger fora. Sem credenciais de cookie.
+- Ordem: cabeçalhos encaminhados (somente de `Transport:TrustedProxies/TrustedNetworks`) →
+  guarda de transporte/limites/correlação → CORS → autenticação → autorização → endpoints.
+- Contêiner: `ASPNETCORE_URLS=http://+:8080` atrás de proxy TLS, nome do serviço em
+  `Authentication:AllowedHosts`, rede do proxy em `Transport:TrustedNetworks`. SOFIA usa o nome
+  do serviço na rede interna. Publicação: skill `sofia-devops-free-cloud`.
+- Endpoint A2A e Agent Card (AA005/AA007) herdam a mesma borda; CORS neles só se um navegador
+  precisar. Testes de DNS/porta a partir do contêiner da SOFIA ficam em AA009.
 
 A alteração do cliente/registry da SOFIA é trabalho do seu proprietário. Neste repositório
 há apenas contrato de integração e servidor futuro da Api.Agente. Ver tasks.md e ADR 0001.

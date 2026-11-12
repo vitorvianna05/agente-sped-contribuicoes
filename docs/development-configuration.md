@@ -63,6 +63,10 @@ O exemplo Development da Api.Agente traz, apenas para desenvolvimento:
   `EFD-Contribuicoes` / `1.35`, igual à aplicabilidade do Guia Prático na RAG. Os códigos e
   períodos cobertos pelo guia 1.35 ainda precisam de decisão fiscal; trocar quando definidos.
 - `Limits:TimeoutSeconds` 120: a análise faz busca, até 5 resoluções MCP e até 2 tentativas do LLM.
+- `Cors:AllowedOrigins` vazio: sem CORS (a SOFIA backend não precisa). Para um frontend no
+  navegador, listar a origem exata (`http://localhost:4200` em Development; HTTPS nos demais).
+  `Transport:TrustedProxies`/`TrustedNetworks` vazios: `X-Forwarded-*` ignorados; preencher só
+  com o proxy que termina TLS (feature 003, ADR 0002).
 - `Llm:Pricing`: tabela pública do gpt-4.1-mini (US$ 0,40 input / 0,10 cache / 1,60 output por
   milhão). Cada tentativa grava o custo estimado; `GET /api/v1/analises/{id}/consumo` mostra
   tokens (inclusive em cache), custo, referência e versão da tabela (ADR 0004 da feature 002).

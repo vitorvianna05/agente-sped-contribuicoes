@@ -8,7 +8,9 @@ using Api.Agente.Infrastructure.Security;
 using Api.Agente.Llm;
 using Api.Agente.Mcp;
 using Api.Agente.Validacao;
+using Microsoft.AspNetCore.Cors.Infrastructure;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.Options;
 
 namespace Api.Agente;
@@ -60,6 +62,27 @@ public sealed partial class Program
         builder.Services.AddScoped<ISpedParser, SpedParser>();
         builder.Services.AddAnalysisAuthorization(builder.Configuration, builder.Environment);
         builder.Services.AddControllers();
+        // Borda HTTP lida das opções validadas (appsettings, variáveis de ambiente ou testes), não do builder.
+        builder.Services.AddCors();
+        builder.Services.AddOptions<CorsOptions>().Configure<IOptions<AgenteOptions>>((cors, edge) =>
+            // Somente navegadores das origens pactuadas; sem credenciais de cookie. Lista vazia = nenhuma origem.
+            cors.AddPolicy(AgentCorsOptions.Policy, policy => policy
+                .WithOrigins(edge.Value.Cors.AllowedOrigins).WithMethods("GET", "POST")
+                .WithHeaders("Authorization", "Content-Type").WithExposedHeaders("X-Correlation-Id")));
+        builder.Services.AddOptions<ForwardedHeadersOptions>().Configure<IOptions<AgenteOptions>>((forwarded, edge) =>
+        {
+            // TLS terminado em proxy confiável: X-Forwarded-Proto/For só dos IPs/redes configurados; sem lista, ignorados.
+            var transport = edge.Value.Transport;
+            forwarded.KnownProxies.Clear();
+            forwarded.KnownIPNetworks.Clear();
+            forwarded.ForwardLimit = 1;
+            forwarded.ForwardedHeaders = transport.TrustsForwardedHeaders ? ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto : ForwardedHeaders.None;
+            // Valores inválidos são recusados no startup por AgenteOptionsValidator.
+            foreach (var proxy in transport.TrustedProxies)
+            { if (IPAddress.TryParse(proxy, out var address)) { forwarded.KnownProxies.Add(address); } }
+            foreach (var network in transport.TrustedNetworks)
+            { if (System.Net.IPNetwork.TryParse(network, out var range) && range.PrefixLength > 0) { forwarded.KnownIPNetworks.Add(range); } }
+        });
         if (builder.Environment.IsDevelopment())
         {
             builder.Services.AddAgentOpenApi();
@@ -70,12 +93,20 @@ public sealed partial class Program
             .AddHttpMessageHandler<BoundedKnowledgeHandler>();
         builder.Services.AddScoped<IConhecimentoClient, ConhecimentoMcpClient>();
         var app = builder.Build();
+        app.UseForwardedHeaders();
         app.Use(async (context, next) =>
         {
             var options = context.RequestServices.GetRequiredService<IOptions<AgenteOptions>>().Value;
             context.TraceIdentifier = Guid.NewGuid().ToString("N");
             context.Items["ExecutionId"] = Guid.NewGuid();
             context.Response.Headers["X-Correlation-Id"] = context.TraceIdentifier;
+            // Cabeçalhos CORS dependem da origem: caches/proxies não podem reutilizar a resposta entre origens.
+            context.Response.OnStarting(() =>
+            {
+                if (!context.Response.Headers.Vary.Any(value => value?.Contains("Origin", StringComparison.OrdinalIgnoreCase) == true))
+                { context.Response.Headers.Append("Vary", "Origin"); }
+                return Task.CompletedTask;
+            });
             var requestToken = context.RequestAborted;
             using var deadline = CancellationTokenSource.CreateLinkedTokenSource(requestToken);
             deadline.CancelAfter(TimeSpan.FromSeconds(options.Limits.TimeoutSeconds));
@@ -133,10 +164,12 @@ public sealed partial class Program
         });
         app.UseStatusCodePages(async status => await Problem(status.HttpContext, status.HttpContext.Response.StatusCode,
             status.HttpContext.Response.StatusCode == 401 ? "AUTHENTICATION_REQUIRED" : "REQUEST_REJECTED"));
+        app.UseCors();
         app.UseAuthentication();
         app.UseAuthorization();
         if (app.Environment.IsDevelopment()) { app.UseAgentSwagger(); }
-        app.MapControllers();
+        // CORS só nas rotas da API; health e Swagger não recebem permissão de origem.
+        app.MapControllers().RequireCors(AgentCorsOptions.Policy);
         app.MapGet("/health/live", () => Results.Ok(new { status = "alive", analysisAvailable = false })).AllowAnonymous();
         await app.RunAsync();
     }
